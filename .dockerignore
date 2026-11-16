@@ -1,0 +1,18 @@
+# Docker Compose construit chaque service depuis son dossier (./backend, ./frontend),
+# qui a son propre .dockerignore. Ce fichier protège un éventuel build depuis la racine.
+.git/
+.github/
+**/node_modules/
+**/dist/
+**/.venv/
+**/__pycache__/
+**/.pytest_cache/
+data/raw/
+data/processed/
+data/indexes/
+data/graphs/
+data/metadata/
+docs/
+tests/
+*.zip
+.env
