@@ -1,0 +1,29 @@
+# Deux conteneurs permanents : backend FastAPI et frontend React (servi par nginx).
+#   docker compose up --build
+#   -> application : http://<IP-du-serveur>:8080     API : http://<IP-du-serveur>:8000/docs
+services:
+  backend:
+    build: ./backend
+    environment:
+      DATA_DIR: /data
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+    volumes:
+      # Textes, métadonnées, index et graphe pré-calculés (lecture seule pour l'API).
+      - ./data:/data:ro
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    restart: unless-stopped
