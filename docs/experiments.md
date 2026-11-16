@@ -1,43 +1,35 @@
-# Expériences et mesures — DAAR Projet 2
+# Expériences — protocole à compléter
 
-Privilégier courbes et diagrammes en bâtons (moyenne + écart type) plutôt que des colonnes
-de chiffres. Citer la provenance des fichiers sources.
+**Aucune mesure n'a encore été effectuée.** Ne pas présenter les exemples
+synthétiques comme des résultats sur le corpus réel.
 
-## 1. Corpus — TODO Kenza
+Pour chaque campagne, conserver : version du code, corpus et nombre de livres,
+normalisation, taille du vocabulaire, matériel, versions logicielles, paramètres,
+nombre de répétitions et distinction entre chargement et calcul.
 
-- TODO (Kenza) : provenance (Gutenberg / Gutendex), nombre de livres, minimum de mots, exclusions
-  (rapport JSON de `scripts/validate_corpus.py`).
+## Similarité et graphe
 
-## 2. Filtrage du vocabulaire — TODO Kenza
+Mesurer séparément le chargement, le calcul de la matrice, l'export et la
+construction du graphe. Étudier plusieurs seuils sur une même matrice.
+Conserver nombre de sommets, arêtes uniques, isolés, degrés et densité.
+Pour un graphe simple non orienté de n >= 2 sommets et m arêtes :
+`densité = 2m / (n(n - 1))`. Traiter explicitement n < 2.
 
-- TODO (Kenza) : tableau avant/après (stopwords, fréquence documentaire maximale, stemming) + justification.
+## PageRank et recommandations
 
-## 3. Index et recherche — TODO Kenza
+Relever durée, paramètres, nombre d'itérations et résidu de convergence.
+Mesurer les recommandations indépendamment du calcul hors ligne.
+Présenter des exemples pertinents et des contre-exemples avec leurs poids Jaccard.
 
-- TODO (Kenza) : durée de construction, taille de l'index, temps de recherche simple et RegEx
-  sur 10 / 100 / 500 / 1664 livres.
+## Classements
 
-## 4. Graphe de Jaccard — TODO Nadine
+Comparer occurrences seules, PageRank seul et combinaison pour les mêmes
+requêtes et candidats. Définir les jugements de pertinence avant la comparaison.
+Ne pas assimiler un score PageRank élevé à une preuve de pertinence textuelle.
 
-- TODO (Nadine) : courbe seuil → arêtes, isolés, composantes ; seuil retenu et justification.
-- TODO (Nadine) : exemples de paires similaires et non similaires ; temps de construction.
+## Montée en charge
 
-## 5. PageRank, classement, suggestions — TODO Nadine
-
-- TODO (Nadine) : classements (A) fréquence seule, (B) PageRank seul, (C) combinaison
-  normalisée : top 5 sur 5 à 10 requêtes, avec commentaire de pertinence.
-- TODO (Nadine) : temps Jaccard / graphe / PageRank, mémoire et tailles.
-- TODO (Nadine) : trois exemples de suggestions commentés avec leur score Jaccard.
-
-## 6. API et application — Camille
-
-Mesures à relever sur le corpus complet, une fois les modules branchés :
-
-- TODO (Camille) : temps de réponse de `/api/search`, `/api/search/advanced` et
-  `/api/books/{id}/text` (moyenne + écart type sur 100 requêtes).
-- TODO (Camille) : charge légère avec deux clients simultanés ; temps de démarrage du backend
-  (chargement de l'index et du graphe).
-- TODO (Camille) : captures de la démonstration sur deux machines clientes.
-
-État actuel (jeu d'exemple de 10 livres simulés) : `tests/test_api.py` vérifie qu'une
-recherche répond en moins d'une seconde ; ce n'est pas une mesure de performance du rendu.
+Commencer sur le jeu synthétique pour la correction, puis dix vrais livres
+pour l'intégration, puis le corpus conforme pour les performances.
+Ne pas extrapoler une performance sur 1 664 livres à partir de dix documents.
+Les seuils d'acceptation des temps de réponse restent à convenir.

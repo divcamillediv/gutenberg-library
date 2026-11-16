@@ -1,12 +1,136 @@
-# Contrat de l'API — DAAR Projet 2
+# Contrats proposés — à valider collectivement
 
-> Responsable : Camille. **Proposition à valider par l'équipe** ; ensuite, aucune
-> modification unilatérale. Les modèles Pydantic de `backend/app/books/schemas.py` sont la
-> référence exécutable, et la documentation interactive est générée sur `/docs`.
+Ce document est une proposition, pas une API implémentée ni une décision actée.
 
-Toutes les routes sont en `GET`, renvoient du JSON et sont préfixées par `/api`.
+## Identifiants et termes
 
-## 1. Routes
+Proposition : un identifiant non vide de type `str` partout, y compris dans les
+réponses HTTP. Cela évite les conversions implicites entre clés JSON et entiers.
+Les IDs réels pourront être les IDs Gutenberg sous forme décimale, sans les
+confondre avec les IDs `sample-*` du jeu synthétique.
+
+Sur disque : `book_terms.json` contient `dict[str, list[str]]`, avec termes uniques.
+En mémoire : `dict[str, set[str]]`. Les termes sont déjà normalisés par le module
+d'indexation ; le module Jaccard ne refait ni stemming ni suppression des stopwords.
+
+Les fréquences ne sont pas utilisées par Jaccard ensembliste. Une liste contenant
+deux fois un terme ne doit pas augmenter sa contribution à la similarité.
+
+## Interfaces Python proposées
+
+Les signatures ci-dessous décrivent les futures fonctions, sans les implémenter.
+Les structures de sortie devront recevoir des types précis lors de leur création.
+
+```python
+jaccard_similarity(a: set[str], b: set[str]) -> float
+jaccard_distance(a: set[str], b: set[str]) -> float
+
+build_similarity_matrix(
+    book_terms: dict[str, set[str]],
+) -> tuple[list[str], list[list[float]]]
+
+build_graph(
+    book_ids: list[str],
+    matrix: list[list[float]],
+    *,
+    threshold: float,
+) -> dict[str, list[dict]]
+
+graph_statistics(neighbors: dict[str, list[dict]]) -> dict
+
+compute_pagerank(
+    neighbors: dict[str, list[dict]],
+    *,
+    damping: float,
+    tolerance: float,
+    max_iter: int,
+) -> dict[str, float]
+
+rank_results(
+    occurrences: dict[str, int],
+    pagerank: dict[str, float],
+    *,
+    strategy: str,
+    alpha: float,
+) -> list[dict]
+
+recommend(
+    book_ids: list[str],
+    neighbors: dict[str, list[dict]],
+    *,
+    exclude_ids: set[str],
+    limit: int,
+) -> list[dict]
+```
+
+Le type numérique de la matrice pourra évoluer vers NumPy après validation des
+dépendances. La liste `book_ids` définit explicitement l'ordre des lignes et
+colonnes et doit être persistée avec la matrice.
+
+## Formats des échanges
+
+Entrée du classement fournie par la recherche :
+
+```json
+{"sample-01": 5, "sample-03": 2}
+```
+
+Il s'agit des occurrences agrégées pour chaque candidat, pas d'un score Jaccard.
+La règle multi-termes (ET/OU, somme des fréquences, répétitions de requête)
+doit être convenue avec le module de recherche.
+
+Graphe d'exemple limité à trois sommets :
+
+```json
+{
+  "sample-01": [{"id": "sample-03", "similarity": 0.5}],
+  "sample-03": [{"id": "sample-01", "similarity": 0.5}],
+  "sample-10": []
+}
+```
+
+Chaque arête non orientée est présente dans les deux listes d'adjacence, mais une
+seule fois dans `edges.json`, sous la forme
+`{"source": "sample-01", "target": "sample-03", "similarity": 0.5}`.
+Tous les IDs doivent apparaître dans les voisins, même sans arête.
+
+PageRank : objet `book_id -> float`, avec un score pour chaque sommet.
+
+Sortie du classement : liste d'objets avec `id`, `occurrences`, `pagerank`, `score`.
+Sortie des recommandations : liste d'objets avec `id`, `similarity`.
+Les titres et auteurs sont ajoutés par le service de métadonnées, pas par les
+algorithmes.
+
+## Règles à valider avant chaque implémentation
+
+| Sujet | Proposition, non encore validée |
+|---|---|
+| Ensembles vides | `J(vide, vide) = 1`, distance 0 ; un seul ensemble vide donne J = 0 |
+| Graphe | Non orienté, sans boucle ; conserver une paire si `J > threshold`, seuil dans [0, 1] |
+| Documents sans termes | Les signaler ; décider s'ils restent dans le graphe pour éviter des liens artificiels entre documents vides |
+| PageRank | Pondéré, téléportation uniforme et redistribution uniforme de la masse des sommets pendants |
+| Convergence | Critère L1 explicite ; erreur si le maximum d'itérations est atteint sans convergence |
+| Graphe vide | Refuser le calcul PageRank sans sommet avec une erreur explicite |
+| Classement | Comparer occurrences seules, PageRank seul, combinaison |
+| Combinaison | `alpha * texte_normalise + (1 - alpha) * pagerank_normalise`, alpha dans [0, 1] |
+| Normalisation | Étudier une division par le maximum parmi les candidats ; maximum nul donne un vecteur nul |
+| Scores absents | Signaler une incohérence d'artefacts plutôt que remplacer silencieusement par zéro |
+| Suggestions | Maximum des similarités aux sources ; exclure les sources et `exclude_ids` |
+| Ordre | Score décroissant, puis identifiant pour départager les égalités de façon déterministe |
+
+Pour les suggestions de recherche, l'API choisit les deux ou trois premiers
+résultats comme sources. Il reste à décider si `exclude_ids` représente la page
+affichée ou tous les résultats de la recherche. Le service ne doit pas le deviner.
+Le seuil et alpha seront choisis à partir d'expériences réelles, pas du jeu fictif.
+
+## API HTTP (couche web — Camille)
+
+Implémentée dans `backend/app/books/routes.py` et `backend/app/search/routes.py` ;
+les modèles Pydantic de `backend/app/books/schemas.py` sont la référence exécutable
+et la documentation interactive est générée sur `/docs`. Toutes les routes sont en
+`GET`, renvoient du JSON et sont préfixées par `/api`.
+
+### Routes
 
 | Route | Rôle |
 |---|---|
@@ -29,7 +153,7 @@ Toutes les routes sont en `GET`, renvoient du JSON et sont préfixées par `/api
 | `q` | search | non vide, ≤ 200 caractères | — |
 | `regex` | search/advanced | non vide, ≤ 100 caractères | — |
 
-## 2. Réponses
+### Réponses
 
 ### Métadonnées d'un livre
 
@@ -102,7 +226,7 @@ et `author` dans les suggestions.
 `data_source` vaut `"corpus"` dès que `data/metadata/books.json` existe. Chaque module vaut
 `"real"` quand la fonction de l'équipe est implémentée, `"mock"` tant qu'elle est en TODO.
 
-## 3. Erreurs
+### Erreurs
 
 Format unique : `{"detail": "message lisible"}` (pour un `422`, `detail` est la liste
 d'erreurs de validation de FastAPI).
@@ -113,42 +237,19 @@ d'erreurs de validation de FastAPI).
 | `404` | Livre inconnu ; texte indisponible ; page au-delà de la dernière |
 | `422` | Paramètre hors bornes ou mal typé (`limit=0`, `page=0`, `book_id` non entier) |
 
-## 4. Fonctions internes (signatures à valider)
+### Branchement des modules
 
-Appelées uniquement depuis `backend/app/integration.py`.
+`backend/app/integration.py` appelle les fonctions des modules de recherche, de
+classement et de recommandation. Tant qu'une fonction est absente (squelette) ou
+lève `NotImplementedError`, l'API répond avec un moteur simulé sur les 10 livres de
+`data/sample/books.json`, et `/api/health` l'indique module par module (`mock` ou
+`real`). Les identifiants renvoyés par les modules sont convertis en entiers.
 
-| Fonction | Responsable | Signature |
-|---|---|---|
-| `app.search.simple_search.search` | Kenza | `search(query: str) -> dict[int, int]` — `book_id -> occurrences` |
-| `app.search.regex_search.regex_search` | Kenza | `regex_search(pattern: str) -> dict[int, int]` — lève `app.errors.InvalidRegexError` |
-| `app.ranking.ranking_service.rank_results` | Nadine | `rank_results(results: dict[int, int]) -> list[dict]` — `[{id, occurrences, pagerank, score}]`, trié |
-| `app.recommendations.recommendation_service.recommend` | Nadine | `recommend(book_ids: list[int], exclude: set[int] \| None = None, limit: int = 6) -> list[dict]` — `[{id, similarity}]`, trié |
+Décisions encore ouvertes entre la couche web et les modules :
 
-Chargement au démarrage (une seule fois, jamais par requête) :
-`inverted_index.load_index(indexes_dir)`, `graph_builder.load_graph(graphs_dir)`,
-`pagerank.load_pagerank(graphs_dir)`.
-
-**Règle de bascule** : tant qu'une fonction lève `NotImplementedError`, l'API répond avec le
-moteur simulé (`app/mocks.py`). Requête vide ou sans correspondance : renvoyer `{}` ou `[]`,
-jamais d'exception.
-
-## 5. Fichiers pré-calculés attendus
-
-| Fichier | Producteur | Contenu |
-|---|---|---|
-| `data/metadata/books.json` | Kenza | Liste JSON des métadonnées (format ci-dessus) |
-| `data/processed/{id}.txt` | Kenza | Texte nettoyé et lisible, UTF-8 |
-| `data/indexes/inverted_index.*` | Kenza | Terme normalisé → `{book_id: fréquence}` |
-| `data/indexes/book_terms.*` | Kenza | `book_id` → ensemble des termes normalisés (entrée de Jaccard) |
-| `data/indexes/original_to_normalized.*` | Kenza | Forme originale → terme normalisé (pour la RegEx) |
-| `data/graphs/edges.*` | Nadine | Arêtes pondérées : similarité Jaccard au-dessus du seuil |
-| `data/graphs/neighbors.*` | Nadine | `book_id` → voisins et poids |
-| `data/graphs/pagerank.*` | Nadine | `book_id` → score PageRank |
-| `data/graphs/stats.*` | Nadine | Mesures du graphe (arêtes, densité, isolés, composantes) |
-
-Les noms sont ceux du plan final ; l'extension et le format interne restent à préciser par
-Kenza et Nadine (TODO). L'API n'en dépend pas : elle n'appelle que les fonctions de la
-section 4.
-
-Jeu d'exemple versionné (10 livres simulés) : `data/sample/books.json`,
-`data/sample/texts/{id}.txt`, `data/sample/neighbors.json`, `data/sample/pagerank.json`.
+| Sujet | Couche web actuelle | Proposition ci-dessus | À trancher |
+|---|---|---|---|
+| Type des identifiants dans l'API | `int` (instructions communes) | `str` partout | Garder `int` côté HTTP ; les modules peuvent travailler en `str` numériques |
+| `rank_results` | `rank_results(occurrences)` | `rank_results(occurrences, pagerank, *, strategy, alpha)` | Si la signature avec `pagerank` est retenue, l'API charge `pagerank.json` et le passe |
+| `recommend` | `recommend(book_ids, exclude=None, limit=6)` | `recommend(book_ids, neighbors, *, exclude_ids, limit)` | Si la signature avec `neighbors` est retenue, l'API charge `neighbors.json` et le passe |
+| `exclude_ids` des suggestions | livres affichés sur la page courante | à décider | Page courante (proposition de la couche web) |

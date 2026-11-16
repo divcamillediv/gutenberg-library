@@ -1,114 +1,96 @@
-# Instructions communes — résumé du plan final
+# Démarrage progressif
 
-Résumé du « Plan final fusionné » (16 novembre 2026), document unique de référence de
-l'équipe. Le PDF d'origine fait foi.
+## Ce qui existe et ce qui manque
 
-## Échéance et rendu
+L'arborescence et un jeu synthétique sont créés. Il n'existe encore ni algorithme,
+ni corpus réel, ni application exécutable. Les contrats sont proposés, non validés.
+Aucun changement Git n'a été effectué.
 
-Dépôt Moodle le **22 novembre 2026 à 23 h 59** : archive `daar-projet2-NOM1-NOM2-NOM3.zip`
-contenant le rapport (10 à 15 pages, 12 recommandées), le code commenté et la vidéo pitch
-d'environ 5 minutes avec démonstration. Taille : environ 30 Mo selon la consigne écrite ;
-vidéo < 50 Mo à confirmer sur Moodle ; appliquer la limite la plus stricte en cas de doute.
+L'arborescence détaillée initiale fait référence ici : `config/settings.py`,
+`books/schemas.py` et `routes.py`. Ne pas ajouter en parallèle `config.py` ou
+`router.py`, qui feraient doublon.
 
-Barème annoncé : environ 30 % réalisation, 40 % rapport, 30 % présentation.
+## Décisions collectives avant le premier commit commun
 
-## Exigences
+- Isoler le dépôt du projet du dépôt situé dans le dossier utilisateur ;
+  choisir le dépôt distant et organiser les trois branches prévues.
+- Valider cette arborescence et les responsabilités de chaque module.
+- Choisir les versions de Python et Node, les dépendances initiales et la
+  gestion de leurs versions. Prévoir pytest comme dépendance de développement.
+- Valider les identifiants, les formats de `book_terms` et des occurrences,
+  les chemins configurables et l'ordre des identifiants de la matrice.
+- Confirmer que les contrats de `api_contract.md` sont provisoires et décider
+  comment communiquer leurs évolutions sans bloquer les autres modules.
+- Vérifier les exclusions Git et la livraison séparée des données volumineuses.
 
-- Au moins 1 664 livres distincts de 10 000 mots minimum ; provenance, contrôles et
-  exclusions documentés.
-- Index inversé sur le contenu ; recherche simple et RegEx sur le vocabulaire indexé,
-  limites expliquées.
-- Classement utilisant réellement PageRank ; graphe de similarité Jaccard et recommandations.
-- Interface : recherche, classement, suggestions, ouverture du texte des livres.
-- Démonstration sur deux machines clientes.
+Le seuil du graphe et le coefficient du classement ne doivent pas être figés
+sans expériences. Ils ne bloquent pas le commit du squelette.
+La règle pour deux ensembles vides doit être fixée avant de coder Jaccard.
+La normalisation doit être commune à l'index et aux requêtes avant intégration.
 
-## Répartition
+## Ordre de développement du module graphe et classement
 
-| Membre | Branche | Responsabilité | Preuve attendue |
+| Étape | Fichiers principaux | Fonctions proposées | Validation attendue |
 |---|---|---|---|
-| Kenza | `feature/data-search` | Corpus, nettoyage, index inversé, recherche simple et RegEx | Corpus validé, index et fonctions testées, couverture et latences |
-| Nadine | `feature/graph-ranking` | Jaccard, distances, graphe, seuil, PageRank, classement, suggestions | Statistiques de graphe, classement A/B/C, voisins pertinents, mesures |
-| Camille | `feature/web-app` | FastAPI, contrat JSON, React, lecture, erreurs, intégration web | Parcours navigateur complet, API testée, deux clients |
+| 1 | `backend/app/recommendations/jaccard.py`, `tests/test_jaccard.py` | `jaccard_similarity`, `jaccard_distance` | Identiques, disjoints, intersection partielle, vides, symétrie, bornes |
+| 2 | `backend/app/recommendations/graph_builder.py`, `tests/test_graph.py` | `build_similarity_matrix` | Ordre des IDs, dimensions, symétrie, diagonale |
+| 3 | Même module, `scripts/build_graph.py` | `build_graph`, `graph_statistics` | Seuil exact, poids, sommets isolés, export/relecture |
+| 4 | `backend/app/ranking/pagerank.py`, `scripts/compute_pagerank.py`, `tests/test_pagerank.py` | `compute_pagerank` | Petits graphes connus, poids, sommets pendants, somme, convergence |
+| 5 | `backend/app/ranking/ranking_service.py`, `tests/test_ranking.py` | `rank_results` | Normalisation, vrais effets du PageRank, stratégies, égalités |
+| 6 | `backend/app/recommendations/recommendation_service.py`, `tests/test_recommendations.py` | `recommend` | Exclusions, dédoublonnage, ordre, limite |
+| 7 | Scripts, `tests/test_performance.py`, `docs/experiments.md` | Exécution hors ligne reproductible | Dix vrais livres, corpus complet, mesures et intégration API |
 
-Collectif : architecture et contrats, GitHub et CI, Docker et Compose, intégration, rapport
-et vidéo. Optionnel : Oracle Cloud. Bonus après socle et Docker validés : Kubernetes / K3s.
+Les recommandations dépendent du graphe mais pas du classement ni de PageRank :
+elles peuvent avancer après l'étape 3 pour débloquer l'interface.
 
-## Tâches de Camille
+Après chaque incrément : exécuter les tests ciblés, lire les résultats, puis
+faire un commit seulement lorsque le comportement attendu est vérifié.
+Supprimer le `pytest.skip` du fichier concerné en écrivant ses vrais tests.
+La collecte actuelle ne contient aucun test exécutable ; elle ne doit pas servir
+de preuve de validation ni de pipeline CI « vert ».
 
-| Tâche | Contenu | État |
-|---|---|---|
-| C1 | FastAPI (routeurs, schémas, `/api/health`) et React/Vite | Fait |
-| C2 | Routes livres, détail, texte, recherche, RegEx, suggestions ; pagination et erreurs | Fait |
-| C3 | Pages accueil, résultats, recherche avancée, détail/lecture, suggestions ; chargement, erreur, vide | Fait |
-| C4 | Réponses simulées sur 10 livres, puis fonctions réelles de Kenza et Nadine | Simulation faite ; branchement en attente des modules |
-| C5 | Docker : deux services, volumes, réseau, variables d'environnement | Écrit ; à lancer sur une machine avec Docker |
-| C6 | Test sur deux machines clientes ; séquence de démonstration sans téléchargement | À faire |
-| C7 | README : installation, démarrage, corpus, requêtes, dépannage | Fait |
+## Première action concrète
 
-Les tâches de Kenza (K1 à K7) et de Nadine (N1 à N7) sont reportées en `TODO (Kenza)` et
-`TODO (Nadine)` dans leurs fichiers.
+Ouvrir `data/sample/book_terms.json` et vérifier à la main :
 
-## Contrats communs
+```text
+A = {island, sea, ship}
+B = {sea, ship, whale}
+intersection = {sea, ship}             -> 2 termes
+union = {island, sea, ship, whale}     -> 4 termes
+J(A, B) = 2/4 = 0,5 ; distance = 0,5
+```
 
-- `book_id` stable et identique dans métadonnées, index, graphe et API.
-- Métadonnées : `id`, `title`, `author`, `language`, `word_count`, `source_url`, `file_path`.
-- Index : terme normalisé → `{book_id: fréquence}` ; plus `book_terms` et le lien formes
-  originales → termes normalisés.
-- Graphe : nœud = `book_id` ; similarité Jaccard ; distance = 1 − Jaccard ; arêtes pondérées
-  au-dessus d'un seuil justifié.
-- API : voir `docs/api_contract.md` ; changement uniquement après accord des trois.
-- Même jeu de 10 livres pour commencer.
+Ce calcul deviendra le premier test de Jaccard. Pour l'étape suivante, décider
+explicitement si `J(vide, vide) = 1`, convention recommandée pour conserver une
+distance nulle entre ensembles identiques, puis implémenter seulement les deux
+fonctions de Jaccard et leurs tests.
 
-## Règles quotidiennes
+Après installation et configuration validées de pytest, la commande ciblée
+prévue depuis la racine du projet sera :
 
-- Un push minimum par jour ; mini-point de 15 minutes : terminé / prochain objectif / blocage.
-- Pull Request relue par au moins une autre personne avant fusion sur `main`.
-- Chaque livraison = code + tests + entrées/sorties documentées + chiffres ou figures.
-- Données volumineuses hors Git ; échantillon et scripts de reconstruction versionnés.
-- Point de charge chaque soir.
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests\test_jaccard.py -q
+```
 
-Terminé = code poussé, tests exécutés, données et IDs compatibles, documentation présente,
-fonction démontrée sur données réelles, PR fusionnée après revue.
+Cette commande n'est pas une validation disponible aujourd'hui :
+le fichier est encore un squelette et pytest n'est pas déclaré comme dépendance.
 
-## Trois modes d'utilisation
+## Commits et intégration
 
-- **Démo** : corpus complet, index et graphe déjà présents sur la machine ; aucun
-  téléchargement pendant la vidéo.
-- **Reconstruction** : `scripts/rebuild_all.sh`, dépendances figées, provenance documentée.
-- **Correcteur** : petit corpus d'exemple dans l'archive (`data/sample/`) pour un test immédiat.
+Une fois le dépôt correctement isolé, le squelette commun doit être partagé
+avant les développements indépendants. Message possible :
+`chore: préparer la structure du moteur de recherche`.
 
-## Planning
+Le premier incrément personnel se fera sur `feature/graph-ranking`, avec par
+exemple `feat: ajouter la similarité et la distance de Jaccard`.
+Ouvrir une Pull Request vers `main`, décrire les contrats et les tests exécutés,
+obtenir une revue et intégrer progressivement. Ne pas attendre la fin du projet.
 
-| Date | Individuel | Jalon collectif |
-|---|---|---|
-| 16 nov. | Kenza : 10 livres + mini-index. Nadine : Jaccard test. Camille : FastAPI/React + mocks | Dépôt, branches, contrats, CI minimale |
-| 17–18 nov. | Kenza : corpus, index, RegEx. Nadine : graphe, PageRank, suggestions. Camille : routes et écrans | Première recherche + lecture via React |
-| 19 nov. | Modules terminés et testés ; artefacts livrés | Intégration de bout en bout + Docker Compose |
-| 20 nov. | Benchmarks et corrections | 1 664 livres, deux clients, courbes |
-| 21 nov. | Sections et figures | Rapport ~12 pages, vidéo ~5 min |
-| 22 nov. | Derniers tests | Clone/ZIP propre, nom, poids ; dépôt avant 23 h 59 |
+## Priorités
 
-Si l'application ne fonctionne pas de bout en bout le 19 novembre : suspendre Oracle et
-Kubernetes.
-
-## Rapport (cible 12 pages)
-
-| Partie | Responsable |
-|---|---|
-| Objectifs, architecture, choix techniques (1–2 p.) | Camille |
-| Corpus, nettoyage, index, RegEx (2–3 p.) | Kenza |
-| Jaccard, graphe, seuil, PageRank (2–3 p.) | Nadine |
-| Classement et recommandations (1–2 p.) | Nadine + Kenza |
-| Tests, performance, limites (~2 p.) | Toutes |
-| Conclusion, références, relecture (~1 p.) | Toutes |
-
-## Validation avant dépôt
-
-- [ ] 1 664 livres valides et provenance prouvée ; index couvrant tous les IDs et le contenu.
-- [ ] Recherche simple, RegEx et cas limites testés ; lecture du texte depuis l'interface.
-- [ ] Similarité Jaccard cohérente ; seuil justifié ; PageRank calculé et utilisé ; classements comparés.
-- [ ] Suggestions pertinentes sans doublons ; exemples documentés.
-- [ ] Application accessible depuis deux clients ; Docker Compose opérationnel.
-- [ ] Mesures et figures disponibles : temps, tailles, isolés, densité, pertinence.
-- [ ] README reproductible, petit jeu de test, corpus complet prêt pour la démo.
-- [ ] Rapport et vidéo avec démonstration ; taille et nom d'archive conformes ; dépôt à temps.
+Obligatoires : corpus conforme, recherche sur le texte, Jaccard, matrice, graphe,
+centralité, classement, suggestions, lecture, tests, rapport et démonstration.
+Docker est recommandé pour la reproductibilité. Oracle reste conditionnel aux
+ressources disponibles. Kubernetes est optionnel et ne doit bloquer aucun livrable.
+Les limites exactes de dépôt et de vidéo restent à vérifier sur Moodle.

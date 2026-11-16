@@ -7,16 +7,22 @@ on:
 
 jobs:
   backend:
+    name: Backend (pytest)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -r backend/requirements.txt
-      - run: pytest -q
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Installer les dépendances
+        run: pip install -r backend/requirements.txt
+      - name: Lancer les tests
+        run: python -m pytest -q
 
   frontend:
+    name: Frontend (tests + build)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -26,6 +32,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: npm ci
-      - run: npm test
-      - run: npm run build
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Installer les dépendances
+        run: npm ci
+      - name: Lancer les tests
+        run: npm test
+      - name: Construire l'application
+        run: npm run build

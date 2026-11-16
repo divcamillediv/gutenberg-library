@@ -17,7 +17,10 @@ class Settings:
     """Configuration lue une seule fois au démarrage."""
 
     def __init__(self) -> None:
-        self.data_dir: Path = Path(os.getenv("DATA_DIR", str(_REPO_ROOT / "data"))).resolve()
+        # Un DATA_DIR relatif (ex. "./data") est résolu depuis la racine du projet,
+        # pas depuis le dossier courant.
+        data_dir = Path(os.getenv("DATA_DIR", "data"))
+        self.data_dir: Path = (data_dir if data_dir.is_absolute() else _REPO_ROOT / data_dir).resolve()
 
         # Données réelles (produites par les scripts de Kenza et Nadine).
         self.metadata_file: Path = self.data_dir / "metadata" / "books.json"

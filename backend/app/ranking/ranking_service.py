@@ -1,25 +1,5 @@
-"""Classement des résultats — RESPONSABLE : NADINE (feature/graph-ranking).
+"""Future textual, PageRank-only and combined result ranking.
 
-Signature convenue avec Camille (voir docs/api_contract.md, « Fonctions internes »).
-Tant que cette fonction lève NotImplementedError, l'API répond avec le
-classement provisoire de app/mocks.py.
+Proposed function: rank_results(occurrences, pagerank, *, strategy, alpha).
+Normalization, missing-score behavior and tie-breaking require agreement.
 """
-from __future__ import annotations
-
-
-def rank_results(results: dict[int, int]) -> list[dict]:
-    """Classe {book_id: occurrences} par pertinence décroissante.
-
-    Retour attendu, trié par `score` décroissant :
-        [{"id": 123, "occurrences": 5, "pagerank": 0.002, "score": 0.84}, ...]
-
-    TODO (Nadine) : définir le score combinant occurrences et PageRank, normalisé
-                    dans [0, 1] ; justifier les poids par des mesures.
-    TODO (Nadine) : `results` vide -> [] (pas d'exception).
-    TODO (Nadine) : comparer (A) fréquence seule, (B) PageRank seul, (C) combinaison
-                    normalisée, sur 5 à 10 requêtes ; top 5 commenté dans
-                    docs/experiments.md. PageRank doit modifier effectivement le
-                    classement C.
-    TODO (Nadine) : tests dans tests/test_pagerank.py.
-    """
-    raise NotImplementedError("TODO Nadine : classement occurrences + PageRank")

@@ -1,44 +1,44 @@
-# Algorithmes — DAAR Projet 2
+# Algorithmes — notes préparatoires
 
-Pour chaque algorithme, le rapport attend : définition du problème et structure de données,
-présentation théorique, critique argumentée, puis tests et performances.
+Aucun des algorithmes ci-dessous n'est encore implémenté.
 
-## 1. Normalisation et index inversé — TODO Kenza
+## Jaccard
 
-- TODO (Kenza) : pipeline de normalisation (casse, ponctuation, tokenisation, stopwords, stemming).
-- TODO (Kenza) : structure de l'index `terme -> {book_id: fréquence}` et format de stockage.
-- TODO (Kenza) : complexité de construction et d'interrogation.
+Pour deux ensembles de termes A et B, lorsque leur union n'est pas vide :
 
-## 2. Recherche simple — TODO Kenza
+```text
+J(A, B) = taille(A intersection B) / taille(A union B)
+d(A, B) = 1 - J(A, B)
+```
 
-- TODO (Kenza) : traitement d'un mot, de plusieurs mots, d'une requête vide ou inconnue.
+Les fréquences sont volontairement ignorées. La convention pour deux ensembles
+vides reste à valider ; proposer une similarité de 1 conserve une distance nulle
+entre ensembles identiques. Cela ne justifie pas automatiquement de relier des
+livres sans termes : la politique du graphe doit être distincte.
 
-## 3. Recherche RegEx sur les termes indexés — TODO Kenza
+## Matrice et graphe
 
-- TODO (Kenza) : algorithme utilisé (bibliothèque standard, automate Aho-Ullman du projet 1, KMP).
-- TODO (Kenza) : limites de la recherche sur termes plutôt que sur texte brut ; motifs coûteux.
+La matrice complète conserve un ordre explicite des identifiants. À 1 664 livres,
+elle contient 2 768 896 valeurs, avec 1 383 616 paires distinctes hors diagonale.
+Une représentation numérique dense float64 demande environ 21,1 Mio pour les
+valeurs seules ; une liste Python ou du JSON a un surcoût nettement supérieur.
+Le coût réel du calcul dépend également de la taille des ensembles de termes.
 
-## 4. Similarité de Jaccard et graphe — TODO Nadine
+Exploiter la symétrie évite de calculer deux fois chaque paire. Le graphe pondéré
+est construit après le calcul des similarités, selon un seuil étudié.
+La matrice est un livrable distinct : les seules arêtes conservées par seuil
+ne permettent pas de reconstituer les similarités supprimées.
 
-- TODO (Nadine) : définition `J(A,B) = |A ∩ B| / |A ∪ B|`, distance `1 - J`, ensembles vides.
-- TODO (Nadine) : construction du graphe, sens et valeur du seuil.
+## PageRank pondéré
 
-## 5. PageRank — TODO Nadine
+Chaque sommet répartit sa masse entre ses voisins proportionnellement aux poids.
+La téléportation et la redistribution de la masse des sommets sans voisins
+doivent être explicites. Contrôler convergence, non-négativité et somme des scores.
+Une absence de convergence doit être signalée, pas présentée comme un résultat final.
 
-- TODO (Nadine) : définition, calcul (itération de puissance, facteur d'amortissement), sommets isolés.
-- TODO (Nadine) : résultat sur des extraits pertinents de quelques livres du corpus.
+## Classement et recommandations
 
-## 6. Classement combiné — TODO Nadine
-
-- TODO (Nadine) : formule du score (occurrences + PageRank), normalisation, exemple chiffré.
-
-## 7. Suggestions — TODO Nadine
-
-- TODO (Nadine) : voisins des 2-3 meilleurs résultats, dédoublonnage, exclusions.
-
-## Annexe : moteur simulé (Camille)
-
-`backend/app/mocks.py` sert uniquement au développement de l'interface. Il compte les mots
-des 10 textes d'exemple en mémoire, applique `re.fullmatch` aux mots pour la RegEx, et classe
-avec `0,7 × occurrences/max + 0,3 × PageRank/max` sur des PageRank fictifs. Il ne doit pas
-être décrit comme un algorithme du projet dans le rapport.
+Ne classer que les candidats renvoyés par la recherche. Normaliser les signaux
+avant combinaison et comparer aux deux stratégies de référence.
+Les recommandations exploitent les poids Jaccard et non le seul PageRank.
+Les formules précises restent des propositions dans `api_contract.md`.
