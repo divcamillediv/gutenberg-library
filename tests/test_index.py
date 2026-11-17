@@ -1,8 +1,7 @@
-
 """Tests de l'index inverse."""
 
 import pytest
-
+from backend.app.search.inverted_index import chercher_plusieurs_mots
 from backend.app.search.inverted_index import chercher_mot, creer_index
 
 
@@ -145,4 +144,25 @@ def test_index_original_non_modifie():
 
     assert "histoire" in index
     assert "histoire" not in resultat
+
+def test_chercher_plusieurs_mots():
+    index = {
+        "alice": {"11": 3, "84": 1},
+        "wonderland": {"11": 2, "74": 1}
+    }
+
+    resultat = chercher_plusieurs_mots(index, ["alice", "wonderland"])
+
+    assert resultat == {"11": 5}
+
+
+def test_chercher_plusieurs_mots_sans_resultat():
+    index = {
+        "alice": {"11": 3},
+        "bateau": {"84": 2}
+    }
+
+    resultat = chercher_plusieurs_mots(index, ["alice", "bateau"])
+
+    assert resultat == {}
 

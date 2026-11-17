@@ -76,3 +76,29 @@ def retirer_mots_presents_dans_trop_de_livres(
             index_filtre[mot] = livres_contenant_mot.copy()
 
     return index_filtre
+
+def chercher_plusieurs_mots(
+        index: dict[str, dict[str, int]],
+        mots: list[str]
+) -> dict[str, int]:
+    """Cherche les livres qui contiennent tous les mots demandés."""
+
+    # Une recherche vide ne donne aucun résultat
+    if not mots:
+        return {}
+
+    # On commence avec les livres du premier mot
+    resultats = chercher_mot(index, mots[0])
+
+    # On cherche les autres mots
+    for mot in mots[1:]:
+        livres = chercher_mot(index, mot)
+
+        # On garde seulement les livres qui contiennent les deux
+        for livre_id in list(resultats):
+            if livre_id in livres:
+                resultats[livre_id] += livres[livre_id]
+            else:
+                del resultats[livre_id]
+
+    return resultats
