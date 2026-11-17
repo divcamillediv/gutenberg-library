@@ -91,3 +91,58 @@ def test_pas_de_nettoyage_implicite():
 
     assert index == {"Mer": {"1": 1}, "mer": {"1": 1}}
     assert chercher_mot(index, "MER") == {}
+
+from backend.app.search.inverted_index import retirer_mots_presents_dans_trop_de_livres
+
+
+def test_retirer_mots_trop_frequents():
+    """Vérifie que les mots trop fréquents sont retirés."""
+    index = {
+        "mer": {"1": 2, "2": 1},
+        "bateau": {"1": 1},
+        "histoire": {"1": 1, "2": 1, "3": 1}
+    }
+
+    resultat = retirer_mots_presents_dans_trop_de_livres(index, 3, 0.8)
+
+    assert "histoire" not in resultat
+    assert "mer" in resultat
+    assert "bateau" in resultat
+
+
+def test_garder_frequence_des_mots():
+    """Vérifie que les occurrences des mots gardés ne changent pas."""
+    index = {
+        "mer": {"1": 3},
+        "bateau": {"2": 2}
+    }
+
+    resultat = retirer_mots_presents_dans_trop_de_livres(index, 3, 0.8)
+
+    assert resultat["mer"] == {"1": 3}
+    assert resultat["bateau"] == {"2": 2}
+
+
+def test_seuil_atteint():
+    """Vérifie qu'un mot est retiré lorsqu'il atteint le seuil."""
+    index = {
+        "mer": {"1": 1, "2": 1, "3": 1, "4": 1}
+    }
+
+    resultat = retirer_mots_presents_dans_trop_de_livres(index, 5, 0.8)
+
+    assert resultat == {}
+
+
+def test_index_original_non_modifie():
+    """Vérifie que l'index original reste inchangé."""
+    index = {
+        "histoire": {"1": 1, "2": 1},
+        "mer": {"1": 2}
+    }
+
+    resultat = retirer_mots_presents_dans_trop_de_livres(index, 2, 0.8)
+
+    assert "histoire" in index
+    assert "histoire" not in resultat
+
