@@ -9,7 +9,7 @@ import pytest
 from backend.app.search.inverted_index import chercher_mot, creer_index
 from backend.app.search.nettoyage import decouper_mots, nettoyer_texte
 from scripts.clean_books import nettoyer_fichier
-
+from backend.app.search.nettoyage import supprimer_stopwords
 
 @pytest.mark.parametrize(
     ("texte", "attendu"),
@@ -195,3 +195,21 @@ def test_commande_en_erreur(tmp_path):
     assert resultat.returncode != 0
     assert "FileNotFoundError" in resultat.stderr
     assert not sortie.exists()
+def test_supprimer_stopwords():
+    """Vérifie que les stopwords sont supprimés."""
+    mots = ["la", "mer", "et", "le", "bateau"]
+    stopwords = {"la", "et", "le"}
+
+    resultat = supprimer_stopwords(mots, stopwords)
+
+    assert resultat == ["mer", "bateau"]
+
+
+def test_garder_repetitions():
+    """Vérifie que les mots répétés sont conservés."""
+    mots = ["la", "mer", "et", "la", "mer"]
+    stopwords = {"la", "et"}
+
+    resultat = supprimer_stopwords(mots, stopwords)
+
+    assert resultat == ["mer", "mer"]
