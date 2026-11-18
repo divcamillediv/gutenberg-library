@@ -9,8 +9,8 @@ def telecharger_livre(identifiant: int, dossier: Path) -> Path:
     dossier.mkdir(parents=True, exist_ok=True)
     chemin = dossier / f"{identifiant}.txt"
 
-    # On évite de télécharger deux fois le même livre
-    if chemin.exists():
+    # On garde le fichier seulement s'il contient des données
+    if chemin.exists() and chemin.stat().st_size > 0:
         return chemin
 
     # On récupère le texte depuis Gutenberg
