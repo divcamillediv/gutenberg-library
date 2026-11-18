@@ -1,5 +1,5 @@
 from backend.app.search.recherche import rechercher_livres
-
+from scripts.build_index import construire_index_des_livres
 
 def test_rechercher_livres():
     index = {
@@ -20,3 +20,29 @@ def test_rechercher_livres_requete_vide():
     resultat = rechercher_livres(index, "the and of")
 
     assert resultat == {}
+
+
+def test_recherche_complete(tmp_path):
+    # On crée trois petits livres
+    (tmp_path / "11.txt").write_text(
+        "The Alice Wonderland Alice",
+        encoding="utf-8"
+    )
+
+    (tmp_path / "84.txt").write_text(
+        "Alice and the rabbit",
+        encoding="utf-8"
+    )
+
+    (tmp_path / "74.txt").write_text(
+        "A journey through the ocean",
+        encoding="utf-8"
+    )
+
+    # On construit l'index à partir des fichiers
+    index = construire_index_des_livres(tmp_path)
+
+    # On lance une recherche avec une phrase
+    resultat = rechercher_livres(index, "The Alice Wonderland!")
+
+    assert resultat == {"11": 3}
