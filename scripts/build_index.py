@@ -1,5 +1,5 @@
 """Prépare les textes de plusieurs livres pour l'indexation."""
-
+from backend.app.search.stopwords import STOPWORDS_ANGLAIS
 from pathlib import Path
 import json
 from backend.app.search.nettoyage import decouper_mots
@@ -30,11 +30,12 @@ def lire_et_nettoyer_livres(dossier: Path) -> dict[str, list[str]]:
 
 def construire_index_des_livres(
         dossier: Path,
-        stopwords: set[str],
+        stopwords: set[str] | None = None,
         seuil: float = 0.8
 ) -> dict[str, dict[str, int]]:
     """Construit un index inversé sans stopwords ni mots trop fréquents."""
-
+    if stopwords is None:
+        stopwords = STOPWORDS_ANGLAIS
     # On lit et on nettoie les livres
     livres = lire_et_nettoyer_livres(dossier)
 
@@ -52,6 +53,7 @@ def construire_index_des_livres(
             nombre_total_livres=len(livres),
             seuil=seuil
         )
+        # On utilise les stopwords anglais si aucune liste n'est fournie
 
     return index
 

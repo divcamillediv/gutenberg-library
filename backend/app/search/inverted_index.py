@@ -1,6 +1,5 @@
-
 """Index inverse construit a partir des mots nettoyes des livres."""
-
+import re
 
 def creer_index(livres: dict[str, list[str]]) -> dict[str, dict[str, int]]:
     """Construit un index avec les mots et leurs occurrences dans chaque livre."""
@@ -100,5 +99,29 @@ def chercher_plusieurs_mots(
                 resultats[livre_id] += livres[livre_id]
             else:
                 del resultats[livre_id]
+
+    return resultats
+
+
+def chercher_regex(
+        index: dict[str, dict[str, int]],
+        motif: str
+) -> dict[str, int]:
+    """Cherche les livres contenant des mots correspondant au motif."""
+
+    if not motif or not motif.strip():
+        raise ValueError("Le motif ne doit pas etre vide.")
+
+    resultats = {}
+
+    # On parcourt les mots de l'index
+    for mot, livres in index.items():
+
+        # On vérifie si le mot correspond au motif
+        if re.search(motif, mot):
+
+            # On additionne les occurrences pour chaque livre
+            for livre_id, frequence in livres.items():
+                resultats[livre_id] = resultats.get(livre_id, 0) + frequence
 
     return resultats

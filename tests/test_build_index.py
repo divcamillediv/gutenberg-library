@@ -41,4 +41,29 @@ def test_enregistrer_index(tmp_path):
     assert resultat == index
 
 
+def test_index_avec_stopwords_anglais_par_defaut(tmp_path):
+    # On crée deux petits livres
+    (tmp_path / "11.txt").write_text(
+        "the alice and alice rabbit",
+        encoding="utf-8"
+    )
+
+    (tmp_path / "84.txt").write_text(
+        "the mystery and castle",
+        encoding="utf-8"
+    )
+
+    # On construit l'index sans fournir de stopwords
+    index = construire_index_des_livres(tmp_path)
+
+    # Les mots courants sont supprimés
+    assert "the" not in index
+    assert "and" not in index
+
+    # Les mots utiles sont conservés
+    assert index["alice"] == {"11": 2}
+    assert index["rabbit"] == {"11": 1}
+    assert index["mystery"] == {"84": 1}
+    assert index["castle"] == {"84": 1}
+
 
