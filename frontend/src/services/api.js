@@ -30,10 +30,23 @@ function extractDetail(body, status) {
   return `Erreur ${status}`;
 }
 
-export async function request(path, params, { signal } = {}) {
+// Cache mémoire des réponses réussies : revenir sur une page de résultats, un
+// livre ou une page de texte déjà vue s'affiche sans nouvel appel réseau.
+// Les données du serveur ne changent pas en cours d'utilisation (calculées hors ligne).
+const CACHE_MAX = 200;
+const cache = new Map();
+
+export function clearApiCache() {
+  cache.clear();
+}
+
+export async function request(path, params, { signal, useCache = true } = {}) {
+  const url = buildUrl(path, params);
+  if (useCache && cache.has(url)) return cache.get(url);
+
   let response;
   try {
-    response = await fetch(buildUrl(path, params), { signal });
+    response = await fetch(url, { signal });
   } catch (error) {
     if (error.name === "AbortError") throw error;
     throw new ApiError(0, "Le serveur est injoignable. Vérifiez que le backend est démarré.");
@@ -45,11 +58,15 @@ export async function request(path, params, { signal } = {}) {
     /* réponse sans JSON */
   }
   if (!response.ok) throw new ApiError(response.status, extractDetail(body, response.status));
+  if (useCache) {
+    if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value); // plus ancienne entrée
+    cache.set(url, body);
+  }
   return body;
 }
 
 export const api = {
-  health: (options) => request("/api/health", {}, options),
+  health: (options) => request("/api/health", {}, { ...options, useCache: false }),
   listBooks: ({ limit = 20, offset = 0 } = {}, options) =>
     request("/api/books", { limit, offset }, options),
   getBook: (id, options) => request(`/api/books/${id}`, {}, options),

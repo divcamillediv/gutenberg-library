@@ -31,6 +31,12 @@ class Settings:
         self.sample_dir: Path = self.data_dir / "sample"
         self.sample_metadata_file: Path = self.sample_dir / "books.json"
 
+        # Métadonnées dans PostgreSQL : activé dès que POSTGRES_PASSWORD est défini
+        # (voir app/config/database.py). USE_POSTGRES=0 force la lecture des fichiers.
+        self.use_postgres: bool = bool(os.getenv("POSTGRES_PASSWORD")) and os.getenv(
+            "USE_POSTGRES", "1"
+        ) not in ("0", "false", "no")
+
         # CORS : "*" en développement ; liste d'origines séparées par des virgules sinon.
         self.cors_origins: list[str] = [
             origin.strip()
@@ -48,12 +54,19 @@ class Settings:
         self.mock_max_books: int = int(os.getenv("MOCK_MAX_BOOKS", "50"))
 
     def resolve_data_path(self, relative_path: str) -> Path:
-        """Résout un `file_path` du contrat (ex. "data/processed/123.txt").
+        """Résout un `file_path` de métadonnées (ex. "data/raw/123.txt" ou "raw/123.txt").
 
-        Les chemins des métadonnées sont relatifs à la racine du projet ; on refuse
-        tout chemin qui sortirait du dossier de données.
+        Le chemin est relatif au dossier de données, avec ou sans le préfixe
+        "data/" : il fonctionne donc quel que soit le nom réel de ce dossier
+        (./data en local, /data dans Docker). On refuse tout chemin qui
+        sortirait du dossier de données.
         """
-        candidate = (self.data_dir.parent / relative_path).resolve()
+        relative = Path(relative_path)
+        if relative.is_absolute():
+            raise ValueError(f"Chemin absolu refusé : {relative_path}")
+        if relative.parts and relative.parts[0] == "data":
+            relative = Path(*relative.parts[1:])
+        candidate = (self.data_dir / relative).resolve()
         if not candidate.is_relative_to(self.data_dir):
             raise ValueError(f"Chemin hors du dossier de données : {relative_path}")
         return candidate

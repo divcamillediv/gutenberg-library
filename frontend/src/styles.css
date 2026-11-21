@@ -143,6 +143,16 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .pagination button { padding: 0.55rem 0.9rem; }
 .pagination span { color: var(--muted); font-variant-numeric: tabular-nums; }
 
+.title-matches {
+  margin: 0 0 1.25rem; padding: 0.85rem 1rem;
+  background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  border-radius: 10px;
+}
+.title-matches h2 { font-size: 1rem; margin-bottom: 0.4rem; }
+.title-matches ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.35rem; }
+.title-matches li { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: baseline; }
+.title-matches a { font-family: var(--serif); font-weight: 600; overflow-wrap: anywhere; }
+
 /* ---------------------------------------------------------------- états */
 .status {
   display: grid; gap: 0.25rem; padding: 1.25rem; margin: 1rem 0;

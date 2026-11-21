@@ -25,6 +25,7 @@ def client(tmp_path_factory):
     """
     empty = tmp_path_factory.mktemp("no-corpus")
     with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(settings, "use_postgres", False)
         mp.setattr(settings, "metadata_file", empty / "books.json")
         mp.setattr(settings, "indexes_dir", empty)
         mp.setattr(settings, "graphs_dir", empty)

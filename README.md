@@ -6,21 +6,25 @@ et PageRank sur le graphe de Jaccard), suggestions de livres voisins, lecture du
 
 ## État actuel
 
-| Partie | Responsable | Branche | État |
-|---|---|---|---|
-| API FastAPI, interface React/Vite, lecture des livres, tests web | Camille | `feature/web-app` | Fonctionnel |
-| Dockerfiles, Docker Compose, CI | Collectif | — | Écrits ; Docker reste à lancer sur une machine équipée |
-| Corpus, nettoyage, index inversé, recherche simple et RegEx | Kenza | `feature/data-search` | Squelettes |
-| Jaccard, graphe, PageRank, classement, recommandations | Nadine | `feature/graph-ranking` | Squelettes |
+| Partie | Responsable | État |
+|---|---|---|
+| API FastAPI, interface React/Vite, lecture des livres, tests web | Camille | Fonctionnel |
+| Corpus, nettoyage, index inversé, recherche simple et RegEx | Kenza | Fonctionnel, branché sur l'API |
+| Jaccard, graphe, PageRank, classement, recommandations | Nadine | Fonctionnel, branché sur l'API |
+| Base PostgreSQL des métadonnées | Kenza, Nadine | Lue par l'API au démarrage |
+| Docker Compose (base, backend, frontend), CI | Collectif | Écrits ; Docker reste à lancer sur une machine équipée |
 
-En attendant les algorithmes, l'API répond avec un **moteur simulé** sur 10 livres
-d'exemple (`data/sample/books.json`, textes courts de remplacement, PageRank et
-similarités fictifs). L'interface affiche un bandeau « Mode démonstration » et
-`/api/health` indique, module par module, `mock` ou `real`. Dès qu'une fonction réelle
-existe dans son module, elle remplace la simulation sans modification de l'API.
+Au démarrage, l'API charge une seule fois :
 
-Les tests des modules algorithmiques sont encore ignorés : seuls les tests de la couche
-web s'exécutent réellement.
+| Donnée | Source | Si absente |
+|---|---|---|
+| Métadonnées des livres | PostgreSQL (si `POSTGRES_PASSWORD` est défini), sinon `data/metadata/books.json` | 10 livres d'exemple de `data/sample/` |
+| Index inversé | `data/indexes/index_complet.json` | Recherche simulée |
+| Graphe de Jaccard, PageRank | `data/graphs/graph.json`, `data/graphs/pagerank.json` | Classement et suggestions simulés |
+
+`/api/health` indique la source des métadonnées (`postgres`, `corpus` ou `sample`) et,
+module par module, `real` ou `mock`. L'interface affiche un bandeau « Mode démonstration »
+tant qu'une partie est simulée.
 
 ## Organisation
 
@@ -53,7 +57,37 @@ des 1 664 livres d'au moins 10 000 mots.
 
 ## Installation et démarrage
 
-Prérequis : Python 3.11 ou plus récent, Node.js 20 ou plus récent.
+Prérequis : Python 3.11 ou plus récent, Node.js 20 ou plus récent, Docker (pour la base).
+
+### 1. Configuration
+
+```bash
+cp .env.example .env      # puis remplacer POSTGRES_PASSWORD=change-me par un vrai mot de passe
+```
+
+### 2. Données (une fois, hors ligne)
+
+Depuis la racine, environnement virtuel activé (voir étape 4) :
+
+```bash
+python scripts/telecharger_depuis_huggingface.py                              # data/raw + data/metadata (pip install datasets)
+python -m scripts.indexer_corpus data/raw data/indexes/index_complet.json     # index inversé
+python scripts/build_graph.py --corpus data/raw                               # data/graphs/graph.json
+python scripts/compute_pagerank.py                                            # data/graphs/pagerank.json
+```
+
+### 3. Base de données
+
+```bash
+docker compose -f docker-compose.storage.yml --env-file .env up -d           # PostgreSQL seul, port 5432 local
+set -a; source .env; set +a                                                   # exporte POSTGRES_PASSWORD...
+python scripts/import_metadata.py                                             # remplit la table books
+```
+
+Sans base (pas de `POSTGRES_PASSWORD`), l'API lit `data/metadata/books.json` ou, à défaut,
+les 10 livres d'exemple.
+
+### 4. Backend et frontend
 
 ```bash
 # Terminal 1 — backend
@@ -61,7 +95,7 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate          # Windows : .venv\Scripts\activate
 pip install -r requirements.txt
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 --env-file ../.env
 
 # Terminal 2 — frontend (une fois le backend démarré)
 cd frontend
@@ -73,21 +107,22 @@ npm run dev
 - État de l'API : <http://localhost:8000/api/health>
 - Documentation de l'API : <http://localhost:8000/docs>
 
-Au démarrage, le backend doit afficher « 10 livres chargés depuis … ». Le serveur Vite
-relaie `/api` vers le backend.
+Au démarrage, le backend doit afficher « 1700 livres chargés depuis PostgreSQL » et
+« Chargé : index inversé », « graphe de Jaccard », « PageRank ». Le serveur Vite relaie
+`/api` vers le backend.
 
-### Avec Docker
-
-Prérequis : Docker et Docker Compose.
+### Avec Docker (base + backend + frontend)
 
 ```bash
+docker compose up --build -d db                  # démarre la base
+python scripts/import_metadata.py                # une fois, variables de .env exportées
 docker compose up --build
 ```
 
 - Application : <http://localhost:8080>
 - Documentation de l'API : <http://localhost:8000/docs>
 
-Pour changer les ports, copier `.env.example` en `.env`.
+Les données de `data/` (textes, index, graphe) sont montées en lecture seule dans le backend.
 
 ## Utilisation depuis plusieurs machines
 
@@ -162,6 +197,8 @@ versionnés.
 |---|---|---|
 | Recherche sans réponse, ou « Le serveur est injoignable » | Backend arrêté, ou frontend lancé avant lui | Vérifier <http://localhost:8000/api/health>, puis arrêter et relancer `npm run dev` |
 | `http proxy error` / `ECONNREFUSED` dans le terminal Vite | Le relais Vite ne joint pas le backend | Vérifier que le backend écoute sur le port 8000 ; sinon définir `VITE_PROXY_TARGET` et relancer `npm run dev` |
+| « PostgreSQL indisponible » dans le terminal du backend | Base arrêtée, mauvais mot de passe, ou `--env-file ../.env` oublié | `docker compose -f docker-compose.storage.yml --env-file .env up -d` ; vérifier `.env` |
+| « La table books de PostgreSQL est vide » | Métadonnées non importées | `python scripts/import_metadata.py` |
 | Bandeau « Mode démonstration » | `data/metadata/books.json` absent, ou module encore en squelette | Normal tant que le corpus et les algorithmes ne sont pas livrés ; détail sur `/api/health` |
 | « Le texte du livre n'est pas disponible » | `file_path` ne pointe pas vers un fichier de `data/` | Vérifier le fichier texte et le chemin relatif dans les métadonnées |
 | La page ne s'ouvre pas depuis un autre appareil | Pare-feu, ou réseau qui isole les appareils (eduroam, Wi-Fi invité) | Autoriser le port 5173 (ou 8080) ; passer par un partage de connexion |

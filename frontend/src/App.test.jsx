@@ -6,6 +6,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import App from "./App.jsx";
+import { clearApiCache } from "./services/api.js";
 
 const BOOKS = {
   2701: { id: 2701, title: "Moby Dick; Or, The Whale", author: "Herman Melville" },
@@ -32,6 +33,7 @@ function respond(url) {
       query: q, mode: "simple", total: found ? 1 : 0, limit: 10, offset: 0,
       results: found ? [{ ...BOOKS[2701], occurrences: 8, pagerank: 0.0887, score: 0.96 }] : [],
       suggestions: found ? [{ ...BOOKS[120], similarity: 0.36 }] : [],
+      title_matches: q === "melville" ? [{ ...BOOKS[2701] }] : [],
     });
   }
   if (pathname === "/api/search/advanced") {
@@ -53,6 +55,7 @@ function respond(url) {
 }
 
 beforeEach(() => {
+  clearApiCache();
   vi.stubGlobal("fetch", vi.fn(async (url) => {
     const { status, body } = respond(url);
     return { ok: status < 400, status, json: async () => body };
@@ -95,6 +98,15 @@ describe("parcours utilisateur", () => {
     await user.click(screen.getByRole("link", { name: "Treasure Island" }));
     expect(await screen.findByRole("heading", { level: 1, name: "Treasure Island" })).toBeTruthy();
     expect(await screen.findByText("A map in a dead sailor's chest.")).toBeTruthy();
+  });
+
+  it("propose les livres trouvés par titre ou auteur", async () => {
+    const user = userEvent.setup();
+    renderAt("/search?q=melville");
+    expect(await screen.findByRole("heading", { name: "Par titre ou auteur" })).toBeTruthy();
+    expect(screen.getByText("Aucun livre ne contient ces mots dans son texte.")).toBeTruthy();
+    await user.click(screen.getByRole("link", { name: "Moby Dick; Or, The Whale" }));
+    expect(await screen.findByText("The white whale rises from the sea.")).toBeTruthy();
   });
 
   it("affiche un message quand aucun livre ne correspond", async () => {

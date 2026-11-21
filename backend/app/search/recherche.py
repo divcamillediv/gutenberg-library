@@ -1,8 +1,8 @@
 """Recherche de livres à partir d'une phrase."""
 
-from backend.app.search.nettoyage import decouper_mots, supprimer_stopwords
-from backend.app.search.stopwords import STOPWORDS_ANGLAIS
-from backend.app.search.inverted_index import chercher_plusieurs_mots
+from .nettoyage import decouper_mots, supprimer_stopwords
+from .stopwords import STOPWORDS_ANGLAIS
+from .inverted_index import chercher_plusieurs_mots
 
 
 def rechercher_livres(

@@ -7,11 +7,11 @@ function DataBanner() {
   const { data } = useApi((options) => api.health(options), []);
   if (!data) return null;
   const mocked = Object.values(data.modules).some((status) => status === "mock");
-  if (data.data_source === "corpus" && !mocked) return null;
+  const sample = data.data_source === "sample";
+  if (!sample && !mocked) return null;
   return (
     <p className="banner" role="status">
-      Mode démonstration : {data.books_loaded} livres
-      {data.data_source === "sample" ? " simulés" : ""}
+      Mode démonstration : {data.books_loaded} livres{sample ? " simulés" : ""}
       {mocked ? ", recherche et classement simulés" : ""}.
     </p>
   );
