@@ -13,14 +13,6 @@ RACINE = Path(__file__).resolve().parents[1]
 DOSSIER_LIVRES = RACINE / "data" / "raw"
 CHEMIN_INDEX = RACINE / "data" / "indexes" / "index_complet.json"
 
-# Ces tests portent sur le corpus complet (1 700 livres), qui n'est pas versionné :
-# ils sont ignorés dans la CI et sur une machine où le corpus n'a pas été construit.
-pytestmark = pytest.mark.skipif(
-    not CHEMIN_INDEX.exists() or not any(DOSSIER_LIVRES.glob("*.txt")),
-    reason="Corpus complet absent : lancer le téléchargement et scripts.indexer_corpus",
-)
-
-
 # Le corpus complet et son index ne sont pas versionnés sur GitHub.
 # Les tests restent obligatoires lors de leur exécution locale.
 pytestmark = pytest.mark.skipif(
