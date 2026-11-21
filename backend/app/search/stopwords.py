@@ -1,4 +1,3 @@
-
 """Mots anglais courants à ignorer lors de l'indexation."""
 
 STOPWORDS_ANGLAIS = {
