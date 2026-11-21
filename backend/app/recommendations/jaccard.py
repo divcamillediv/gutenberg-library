@@ -1,16 +1,18 @@
-
 def jaccard_similarity(a: set[str], b: set[str]) -> float:
-    # Deux ensembles vides sont considérés comme identiques
+    """Calcule la similarité de Jaccard entre deux ensembles."""
+
     if not a and not b:
         return 1.0
 
-    # Mots en commun et mots distincts des deux livres
-    intersection = a & b
-    union = a | b
+    # Calculer uniquement l'intersection
+    intersection = len(a.intersection(b))
 
-    return len(intersection) / len(union)
+    # Pas besoin de construire l'ensemble union
+    union = len(a) + len(b) - intersection
+
+    return intersection / union
 
 
 def jaccard_distance(a: set[str], b: set[str]) -> float:
-    # Plus la distance est faible, plus les livres se ressemblent
+    """Calcule la distance de Jaccard."""
     return 1.0 - jaccard_similarity(a, b)
