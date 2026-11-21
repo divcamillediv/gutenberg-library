@@ -57,3 +57,67 @@ def test_recherche_plusieurs_mots(index_complet):
     for identifiant in resultats:
         assert identifiant in index_complet["alice"]
         assert identifiant in index_complet["rabbit"]
+
+# Tests complémentaires sur l'index des 1 700 livres
+
+from backend.app.search.inverted_index import chercher_regex
+
+
+def test_recherche_mot_inexistant(index_complet):
+    resultats = rechercher_livres(
+        index_complet, "motinventeintrouvablexyz123"
+    )
+    assert resultats == {}
+
+
+def test_recherche_and(index_complet):
+    resultats = rechercher_livres(index_complet, "alice rabbit")
+
+    assert len(resultats) == 85
+    assert resultats["11"] == 450
+
+    for livre_id in resultats:
+        assert livre_id in index_complet["alice"]
+        assert livre_id in index_complet["rabbit"]
+
+
+def test_regex_mot_exact(index_complet):
+    resultats = chercher_regex(index_complet, "^alice$")
+
+    assert resultats == index_complet["alice"]
+
+
+def test_regex_prefixe(index_complet):
+    resultats = chercher_regex(index_complet, "^alic.*")
+
+    assert len(resultats) == 268
+    assert "11" in resultats
+
+
+def test_regex_operateur_ou(index_complet):
+    resultats = chercher_regex(
+        index_complet, "^(alice|rabbit)$"
+    )
+
+    livres_attendus = (
+            set(index_complet["alice"])
+            | set(index_complet["rabbit"])
+    )
+
+    assert set(resultats) == livres_attendus
+
+
+def test_regex_repetition(index_complet):
+    resultats = chercher_regex(index_complet, "^rabb.*")
+
+    assert set(index_complet["rabbit"]).issubset(
+        set(resultats)
+    )
+
+
+def test_regex_aucun_resultat(index_complet):
+    resultats = chercher_regex(
+        index_complet, "^motinventeintrouvablexyz123$"
+    )
+
+    assert resultats == {}
