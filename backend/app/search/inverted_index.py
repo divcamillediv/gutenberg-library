@@ -1,5 +1,8 @@
 """Index inverse construit a partir des mots nettoyes des livres."""
 import re
+import json
+from pathlib import Path
+
 
 def creer_index(livres: dict[str, list[str]]) -> dict[str, dict[str, int]]:
     """Construit un index avec les mots et leurs occurrences dans chaque livre."""
@@ -76,6 +79,7 @@ def retirer_mots_presents_dans_trop_de_livres(
 
     return index_filtre
 
+
 def chercher_plusieurs_mots(
         index: dict[str, dict[str, int]],
         mots: list[str]
@@ -125,3 +129,26 @@ def chercher_regex(
                 resultats[livre_id] = resultats.get(livre_id, 0) + frequence
 
     return resultats
+
+
+# Index inversé chargé en mémoire au démarrage du backend
+index_charge: dict[str, dict[str, int]] | None = None
+
+
+def load_index(directory: Path) -> dict[str, dict[str, int]]:
+    """Charge l'index inversé précalculé depuis le fichier JSON."""
+
+    global index_charge
+
+    chemin = Path(directory) / "index_complet.json"
+
+    # On charge l'index existant sans le reconstruire
+    with chemin.open("r", encoding="utf-8") as fichier:
+        index_charge = json.load(fichier)
+
+    print(
+        f"Index inversé chargé : {len(index_charge)} termes",
+        flush=True
+    )
+
+    return index_charge
