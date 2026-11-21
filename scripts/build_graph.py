@@ -1,7 +1,6 @@
 import argparse
 import json
 import sys
-import unicodedata
 from pathlib import Path
 from time import perf_counter
 
@@ -9,21 +8,21 @@ racine = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(racine))
 
 from backend.app.recommendations.graph_builder import construire_graphe
+from backend.app.search.nettoyage import decouper_mots, supprimer_stopwords
+from backend.app.search.stopwords import STOPWORDS_ANGLAIS
 
 
 def nettoyer_mots(texte: str) -> set[str]:
-    """Nettoie le texte comme pour l'indexation des livres."""
+    """Nettoie le texte et retire les mots courants."""
 
-    texte = unicodedata.normalize("NFC", texte).lower()
+    # Utiliser le même nettoyage que pour l'index inversé
+    mots = decouper_mots(texte)
 
-    caracteres = []
-    for caractere in texte:
-        if caractere.isalpha():
-            caracteres.append(caractere)
-        else:
-            caracteres.append(" ")
+    # Supprimer les stopwords anglais
+    mots = supprimer_stopwords(mots, STOPWORDS_ANGLAIS)
 
-    return set("".join(caracteres).split())
+    # Jaccard utilise les mots distincts
+    return set(mots)
 
 
 def charger_livres(dossier: Path) -> dict[str, set[str]]:
@@ -33,7 +32,10 @@ def charger_livres(dossier: Path) -> dict[str, set[str]]:
 
     for fichier in sorted(dossier.glob("*.txt")):
         identifiant = fichier.stem
-        texte = fichier.read_text(encoding="utf-8-sig", errors="replace")
+        texte = fichier.read_text(
+            encoding="utf-8-sig",
+            errors="replace"
+        )
 
         livres[identifiant] = nettoyer_mots(texte)
 
@@ -51,13 +53,24 @@ def enregistrer_graphe(graphe: dict, destination: Path) -> None:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--corpus", type=Path, required=True)
+
+    parser.add_argument(
+        "--corpus",
+        type=Path,
+        required=True
+    )
+
     parser.add_argument(
         "--output",
         type=Path,
         default=Path("data/graphs/graph.json")
     )
-    parser.add_argument("--seuil", type=float, default=0.3)
+
+    parser.add_argument(
+        "--seuil",
+        type=float,
+        default=0.3
+    )
 
     args = parser.parse_args()
 
@@ -66,15 +79,22 @@ def main():
 
     debut = perf_counter()
 
+    # Charger les livres et retirer les stopwords
     livres = charger_livres(args.corpus)
-    print(f"Livres chargés : {len(livres)}")
 
+    print(f"Livres chargés : {len(livres)}", flush=True)
+
+    # Construire le graphe avec les mots nettoyés
     graphe = construire_graphe(livres, seuil=args.seuil)
 
     duree = perf_counter() - debut
+
+    # Sauvegarder le graphe
     enregistrer_graphe(graphe, args.output)
 
-    nombre_aretes = sum(len(voisins) for voisins in graphe.values()) // 2
+    nombre_aretes = sum(
+        len(voisins) for voisins in graphe.values()
+    ) // 2
 
     print(f"Sommets : {len(graphe)}")
     print(f"Arêtes : {nombre_aretes}")
