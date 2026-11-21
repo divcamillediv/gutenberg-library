@@ -11,21 +11,34 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
+from app.config import settings
 from app.main import app
 
 
 @pytest.fixture(scope="module")
-def client():
-    # Le bloc `with` déclenche le lifespan : chargement des données au démarrage.
-    with TestClient(app) as test_client:
-        yield test_client
+def client(tmp_path_factory):
+    """API isolée sur le jeu d'exemple de 10 livres.
+
+    Les fichiers du corpus réel (métadonnées, index, graphe, PageRank) sont
+    remplacés par des emplacements vides : les tests donnent le même résultat
+    sur une machine qui a le corpus complet et dans la CI qui ne l'a pas.
+    """
+    empty = tmp_path_factory.mktemp("no-corpus")
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(settings, "metadata_file", empty / "books.json")
+        mp.setattr(settings, "indexes_dir", empty)
+        mp.setattr(settings, "graphs_dir", empty)
+        # Le bloc `with` déclenche le lifespan : chargement des données au démarrage.
+        with TestClient(app) as test_client:
+            yield test_client
 
 
 # --------------------------------------------------------------------------- santé
 def test_health(client):
     body = client.get("/api/health").json()
     assert body["status"] == "ok"
-    assert body["books_loaded"] >= 10
+    assert body["books_loaded"] == 10
+    assert body["data_source"] == "sample"
     assert set(body["modules"]) == {"search", "regex", "ranking", "recommendations"}
 
 
@@ -174,3 +187,10 @@ def test_response_time_is_reasonable(client):
     for _ in range(20):
         assert client.get("/api/search", params={"q": "sea"}).status_code == 200
     assert (time.perf_counter() - start) / 20 < 1.0
+
+
+# ------------------------------------------------------------ fichiers pré-calculés
+def test_missing_artifacts_do_not_crash_startup(client):
+    """Sans index, graphe ni PageRank, l'API démarre et signale la simulation."""
+    modules = client.get("/api/health").json()["modules"]
+    assert modules == {"search": "mock", "regex": "mock", "ranking": "mock", "recommendations": "mock"}

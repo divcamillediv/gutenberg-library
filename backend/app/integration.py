@@ -7,8 +7,9 @@ Unique point de contact entre les routes FastAPI et les modules de l'équipe :
            app.recommendations.recommendation_service.recommend
 
 Tant qu'une de ces fonctions n'existe pas encore (fichier squelette) ou lève
-NotImplementedError (TODO non réalisé), la réponse provient du moteur simulé
-(app/mocks.py), et /api/health l'indique. Aucun fichier de Kenza ou de Nadine
+NotImplementedError (TODO non réalisé), ou que le fichier pré-calculé dont elle
+dépend n'a pas pu être chargé (index, graphe, PageRank absent ou illisible), la
+réponse provient du moteur simulé (app/mocks.py), et /api/health l'indique. Aucun fichier de Kenza ou de Nadine
 n'a donc besoin d'être modifié pour que l'application tourne.
 
 Les identifiants renvoyés par les modules sont convertis en entiers : un module
@@ -51,8 +52,22 @@ def _resolve(module_name: str, function_name: str) -> Callable:
     return function
 
 
+# Fichiers pré-calculés chargés au démarrage, et modules qui en dépendent.
+artifacts_loaded: dict[str, bool] = {"index": False, "graph": False, "pagerank": False}
+_REQUIRES = {
+    "search": "index",
+    "regex": "index",
+    "ranking": "pagerank",
+    "recommendations": "graph",
+}
+
+
 def _call(name: str, target: tuple[str, str], mock: Callable, *args, **kwargs):
-    """Appelle la fonction réelle ; bascule sur la simulation si elle est absente ou en TODO."""
+    """Appelle la fonction réelle ; bascule sur la simulation si elle est absente, en TODO,
+    ou si le fichier pré-calculé dont elle dépend n'est pas chargé."""
+    if not artifacts_loaded[_REQUIRES[name]]:
+        module_status[name] = "mock"
+        return mock(*args, **kwargs)
     try:
         real = _resolve(*target)
         result = real(*args, **kwargs)
@@ -74,16 +89,24 @@ def startup() -> None:
     """Charge une seule fois les fichiers pré-calculés (index, graphe, PageRank)."""
     mock_engine.reset()
     loaders = [
-        ("index inversé (Kenza)", ("search.inverted_index", "load_index"), settings.indexes_dir),
-        ("graphe de Jaccard (Nadine)", ("recommendations.graph_builder", "load_graph"), settings.graphs_dir),
-        ("PageRank (Nadine)", ("ranking.pagerank", "load_pagerank"), settings.graphs_dir),
+        ("index", "index inversé (Kenza)", ("search.inverted_index", "load_index"), settings.indexes_dir),
+        ("graph", "graphe de Jaccard (Nadine)", ("recommendations.graph_builder", "load_graph"), settings.graphs_dir),
+        ("pagerank", "PageRank (Nadine)", ("ranking.pagerank", "load_pagerank"), settings.graphs_dir),
     ]
-    for label, target, directory in loaders:
+    for key, label, target, directory in loaders:
+        artifacts_loaded[key] = False
         try:
             _resolve(*target)(directory)
-            logger.info("Chargé : %s", label)
         except (_NotAvailable, NotImplementedError):
             logger.warning("Non implémenté, simulation utilisée : %s", label)
+        except FileNotFoundError as exc:
+            logger.warning("Fichier absent (%s), simulation utilisée : %s", exc.filename, label)
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            # Fichier illisible ou au mauvais format : l'API démarre quand même.
+            logger.error("Chargement impossible (%s), simulation utilisée : %s", exc, label)
+        else:
+            artifacts_loaded[key] = True
+            logger.info("Chargé : %s", label)
 
     # Sondes : déterminent dès le démarrage quels modules sont réels.
     _call("search", _SEARCH, mock_engine.search, "probe")

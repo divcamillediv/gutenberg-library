@@ -8,8 +8,17 @@ from backend.app.search.recherche import rechercher_livres
 from backend.app.search.inverted_index import chercher_regex
 
 
-DOSSIER_LIVRES = Path("data/raw")
-CHEMIN_INDEX = Path("data/indexes/index_complet.json")
+# Chemins résolus depuis la racine du dépôt, quel que soit le dossier courant.
+RACINE = Path(__file__).resolve().parents[1]
+DOSSIER_LIVRES = RACINE / "data" / "raw"
+CHEMIN_INDEX = RACINE / "data" / "indexes" / "index_complet.json"
+
+# Ces tests portent sur le corpus complet (1 700 livres), qui n'est pas versionné :
+# ils sont ignorés dans la CI et sur une machine où le corpus n'a pas été construit.
+pytestmark = pytest.mark.skipif(
+    not CHEMIN_INDEX.exists() or not any(DOSSIER_LIVRES.glob("*.txt")),
+    reason="Corpus complet absent : lancer le téléchargement et scripts.indexer_corpus",
+)
 
 
 # Le corpus complet et son index ne sont pas versionnés sur GitHub.
@@ -26,7 +35,6 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture(scope="module")
 def index_complet():
-    assert CHEMIN_INDEX.exists(), "L'index complet est introuvable"
     return charger_index(CHEMIN_INDEX)
 
 
