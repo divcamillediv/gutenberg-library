@@ -1,4 +1,11 @@
+import json
+from pathlib import Path
+
 from .jaccard import jaccard_similarity
+
+
+# Graphe chargé une seule fois au démarrage de l'application
+graphe_charge = {}
 
 
 def construire_graphe(livres: dict[int, set[str]], seuil: float = 0.3) -> dict:
@@ -18,3 +25,24 @@ def construire_graphe(livres: dict[int, set[str]], seuil: float = 0.3) -> dict:
                 graphe[id2][id1] = similarite
 
     return graphe
+
+
+def load_graph(directory: Path) -> dict:
+    global graphe_charge
+
+    chemin = Path(directory) / "graph.json"
+
+    # On lit le graphe enregistré par build_graph.py
+    with chemin.open("r", encoding="utf-8") as fichier:
+        donnees = json.load(fichier)
+
+    # JSON utilise des chaînes pour les clés des dictionnaires
+    graphe_charge = {
+        int(livre): {
+            int(voisin): float(poids)
+            for voisin, poids in voisins.items()
+        }
+        for livre, voisins in donnees.items()
+    }
+
+    return graphe_charge

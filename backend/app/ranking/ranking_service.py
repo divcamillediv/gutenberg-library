@@ -1,10 +1,12 @@
+from app.ranking import pagerank as module_pagerank
+
 def rank_results(
     occurrences: dict[int, int],
-    pagerank: dict[int, float],
+    pagerank: dict[int, float] | None = None,
     *,
     strategy: str = "combined",
     alpha: float = 0.5
-) -> list[int]:
+) -> list:
 
     if strategy not in ("textual", "pagerank", "combined"):
         raise ValueError("Strategie de classement inconnue")
@@ -15,10 +17,15 @@ def rank_results(
     if not occurrences:
         return []
 
-    # On classe uniquement les livres trouvés par la recherche
+    # Si Camille ne fournit pas les scores, on utilise ceux charges au demarrage
+    mode_integration = pagerank is None
+
+    if mode_integration:
+        pagerank = module_pagerank.pagerank_charge
+
     livres = list(occurrences.keys())
 
-    # On ramène les occurrences entre 0 et 1
+    # On normalise les occurrences entre 0 et 1
     max_occurrences = max(occurrences.values())
 
     scores_textuels = {}
@@ -28,7 +35,7 @@ def rank_results(
         else:
             scores_textuels[livre] = 0.0
 
-    # On fait la même chose avec les scores PageRank
+    # On normalise aussi les scores PageRank
     max_pagerank = max(pagerank.get(livre, 0.0) for livre in livres)
 
     scores_pagerank = {}
@@ -54,5 +61,19 @@ def rank_results(
                 + (1 - alpha) * scores_pagerank[livre]
             )
 
-    # En cas d'égalité, on classe par identifiant croissant
-    return sorted(livres, key=lambda livre: (-scores[livre], livre))
+    classement = sorted(livres, key=lambda livre: (-scores[livre], livre))
+
+    # Ancien fonctionnement : on renvoie seulement les identifiants
+    if not mode_integration:
+        return classement
+
+    # Pour Camille : on renvoie les informations necessaires a l'interface
+    return [
+        {
+            "id": livre,
+            "occurrences": occurrences[livre],
+            "pagerank": round(pagerank.get(livre, 0.0), 6),
+            "score": round(scores[livre], 4)
+        }
+        for livre in classement
+    ]

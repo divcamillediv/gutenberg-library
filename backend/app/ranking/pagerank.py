@@ -1,3 +1,11 @@
+import json
+from pathlib import Path
+
+
+# Scores chargés une seule fois au démarrage de l'application
+pagerank_charge = {}
+
+
 def calculer_pagerank(graphe: dict, alpha: float = 0.85,
                      iterations: int = 100, tolerance: float = 1e-6) -> dict:
     if not graphe:
@@ -44,3 +52,20 @@ def calculer_pagerank(graphe: dict, alpha: float = 0.85,
             break
 
     return scores
+
+
+def load_pagerank(directory: Path) -> dict:
+    global pagerank_charge
+
+    chemin = Path(directory) / "pagerank.json"
+
+    # On récupère les scores enregistrés par compute_pagerank.py
+    with chemin.open("r", encoding="utf-8") as fichier:
+        donnees = json.load(fichier)
+
+    pagerank_charge = {
+        int(livre): float(score)
+        for livre, score in donnees.items()
+    }
+
+    return pagerank_charge
