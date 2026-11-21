@@ -1,13 +1,27 @@
 
+import os
 import pytest
 from pathlib import Path
 
 from scripts.build_index import charger_index
 from backend.app.search.recherche import rechercher_livres
+from backend.app.search.inverted_index import chercher_regex
 
 
 DOSSIER_LIVRES = Path("data/raw")
 CHEMIN_INDEX = Path("data/indexes/index_complet.json")
+
+
+# Le corpus complet et son index ne sont pas versionnés sur GitHub.
+# Les tests restent obligatoires lors de leur exécution locale.
+pytestmark = pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") == "true"
+    and (
+            not CHEMIN_INDEX.exists()
+            or not any(DOSSIER_LIVRES.glob("*.txt"))
+    ),
+    reason="Corpus complet non disponible sur GitHub Actions"
+)
 
 
 @pytest.fixture(scope="module")
@@ -58,10 +72,8 @@ def test_recherche_plusieurs_mots(index_complet):
         assert identifiant in index_complet["alice"]
         assert identifiant in index_complet["rabbit"]
 
+
 # Tests complémentaires sur l'index des 1 700 livres
-
-from backend.app.search.inverted_index import chercher_regex
-
 
 def test_recherche_mot_inexistant(index_complet):
     resultats = rechercher_livres(
