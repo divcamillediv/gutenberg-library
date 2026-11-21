@@ -66,3 +66,11 @@ def enregistrer_index(index: dict[str, dict[str, int]], chemin: Path) -> None:
     # On enregistre l'index au format JSON
     with chemin.open("w", encoding="utf-8") as fichier:
         json.dump(index, fichier, ensure_ascii=False, indent=2)
+
+def charger_index(chemin: Path) -> dict[str, dict[str, int]]:
+    """Charge un index inversé depuis un fichier JSON."""
+
+    with chemin.open("r", encoding="utf-8") as fichier:
+        index = json.load(fichier)
+
+    return index

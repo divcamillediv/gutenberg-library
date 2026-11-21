@@ -1,6 +1,9 @@
+from scripts.build_index import (
+    construire_index_des_livres,
+    enregistrer_index,
+    charger_index,
+)
 from backend.app.search.recherche import rechercher_livres
-from scripts.build_index import construire_index_des_livres
-
 def test_rechercher_livres():
     index = {
         "alice": {"11": 3, "84": 1},
@@ -46,3 +49,31 @@ def test_recherche_complete(tmp_path):
     resultat = rechercher_livres(index, "The Alice Wonderland!")
 
     assert resultat == {"11": 3}
+
+def test_recherche_sur_index_recharge(tmp_path):
+    # On crée trois petits livres
+    dossier = tmp_path / "livres"
+    dossier.mkdir()
+
+    (dossier / "11.txt").write_text(
+        "Alice rabbit rabbit wonderland", encoding="utf-8"
+    )
+    (dossier / "84.txt").write_text(
+        "Monster castle mystery", encoding="utf-8"
+    )
+    (dossier / "120.txt").write_text(
+        "Alice adventure sea", encoding="utf-8"
+    )
+
+    # On construit et enregistre l'index
+    index = construire_index_des_livres(dossier)
+    chemin = tmp_path / "index.json"
+    enregistrer_index(index, chemin)
+
+    # On recharge l'index depuis le fichier JSON
+    index_recharge = charger_index(chemin)
+
+    # On recherche dans l'index rechargé
+    resultats = rechercher_livres(index_recharge, "Alice rabbit")
+
+    assert resultats == {"11": 3}
