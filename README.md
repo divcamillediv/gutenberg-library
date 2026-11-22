@@ -1,175 +1,248 @@
 # DAAR — Bibliothèque Gutenberg
 
-Application web de recherche et de lecture de livres du Projet Gutenberg, réalisée par **Kenza, Nadine et Camille** dans le cadre du projet 2 de DAAR.
+**Projet 2 — DAAR, Master Informatique**  
+**Réalisé par Kenza, Nadine et Camille**
+
+Application web permettant de rechercher des livres du Projet Gutenberg, de lire leur texte et d'obtenir des recommandations de livres similaires.
 
 **Application en ligne :** http://56.228.24.64/  
 **Dépôt GitHub :** https://github.com/divcamillediv/gutenberg-library
 
-## Fonctionnalités
+## 1. Comment lancer et tester l'application ?
 
-- Recherche simple par mot-clé et recherche avancée par expression régulière (RegEx).
-- Classement des résultats selon les occurrences des mots et le PageRank.
-- Recommandations de livres à partir d'un graphe de similarité de Jaccard.
-- Consultation des informations des livres et lecture de leur texte dans le navigateur.
-- Interface accessible depuis un ordinateur ou un téléphone.
+Deux méthodes sont possibles :
 
-Le corpus préparé contient **1 700 livres**. Lors de notre dernière vérification, **1 697 livres** étaient chargés sur l'application en ligne.
+| Méthode | Accès | Données disponibles |
+|---|---|---|
+| **1. Site en ligne (AWS)** | http://56.228.24.64/ | Corpus réel, 1 697 livres chargés lors de notre dernière vérification |
+| **2. Docker Compose (local)** | http://localhost:8080/ | 10 livres d'exemple si le corpus complet est absent |
 
-## 1. Tester directement l'application en ligne
+**Nous recommandons le site AWS pour tester les algorithmes sur le corpus réel.** Le lancement avec Docker permet de vérifier le fonctionnement de l'application sur un ordinateur local.
 
-L'application est déjà déployée sur un serveur **AWS EC2** et accessible depuis Internet :
+### Méthode 1 — Utiliser directement le site en ligne
 
-**http://56.228.24.64/**
+L'application est hébergée sur un serveur **AWS EC2 Ubuntu**.
 
-Aucune installation n'est nécessaire. Il suffit d'ouvrir cette adresse dans un navigateur.
+**Adresse : http://56.228.24.64/**
 
-Quelques fonctionnalités à tester :
+Aucune installation n'est nécessaire.
 
-1. Rechercher `whale` dans la barre de recherche.
-2. Ouvrir la recherche avancée et saisir `whal(e|es|ing)`.
+Pour tester l'application :
+
+1. Ouvrir le site dans un navigateur.
+2. Rechercher `whale` dans la barre de recherche.
 3. Consulter les résultats classés par pertinence.
-4. Ouvrir un livre pour lire son texte.
+4. Ouvrir un livre pour consulter sa fiche et lire son texte.
 5. Consulter les suggestions de livres similaires.
+6. Aller dans l'onglet **RegEx** et saisir `whal(e|es|ing)`.
 
-Cette version utilise les données réelles du corpus. Elle nécessite une connexion Internet et la disponibilité du serveur AWS.
+Cette version utilise le corpus réel, l'index inversé, le graphe de Jaccard et les scores PageRank.
 
-Le même site peut être ouvert depuis plusieurs ordinateurs différents. C'est notamment ce que nous montrons dans notre vidéo de démonstration.
+Nous avons préparé un corpus de **1 700 livres**. Lors de notre dernière vérification, **1 697 livres** étaient chargés par le backend.
 
-## 2. Architecture et technologies
+Le site est accessible depuis plusieurs ordinateurs ou téléphones disposant d'une connexion Internet, tant que le serveur AWS est disponible.
 
-Notre application utilise les technologies suivantes :
+### Méthode 2 — Lancer le projet en local avec Docker Compose
 
-| Technologie | Utilisation |
-|---|---|
-| React / Vite | Interface web |
-| FastAPI / Python | API, recherche et algorithmes |
-| PostgreSQL | Stockage des métadonnées des livres |
-| Docker / Docker Compose | Conteneurisation et lancement des services |
-| AWS EC2 | Hébergement de l'application |
-| GitHub Actions | Intégration et déploiement automatiques |
-| GitHub Container Registry (GHCR) | Stockage des images Docker |
+Cette méthode permet de lancer l'application à partir du ZIP du code source fourni dans notre rendu.
 
-L'application est organisée autour de trois services Docker :
-
-- **frontend** : interface React servie par Nginx ;
-- **backend** : API FastAPI et moteur de recherche ;
-- **db** : base de données PostgreSQL.
-
-Docker Compose permet de gérer ces trois services ensemble.
-
-Les calculs de l'index inversé, du graphe de Jaccard et du PageRank sont réalisés hors ligne. Les résultats sont enregistrés dans des fichiers que le backend charge au démarrage.
-
-## 3. Déploiement sur AWS et GitHub Actions
-
-Notre application est hébergée sur une instance **AWS EC2 Ubuntu**.
-
-Les services frontend, backend et PostgreSQL sont exécutés dans des conteneurs Docker. Docker Compose permet de les démarrer et de les maintenir ensemble sur le serveur.
-
-Nous avons également mis en place un déploiement automatique avec **GitHub Actions**.
-
-### Fonctionnement du déploiement
-
-1. Une modification est effectuée dans le code du projet.
-2. Le code est envoyé sur la branche `main` avec `git push`.
-3. GitHub Actions déclenche le workflow de publication.
-4. Les images Docker sont construites et publiées dans **GHCR**.
-5. Le workflow de déploiement utilise un runner installé sur notre serveur AWS EC2.
-6. Les conteneurs sont mis à jour avec Docker Compose.
-7. La nouvelle version devient accessible sur le même site, sans déploiement manuel.
-
-Les workflows se trouvent dans le dossier `.github/workflows/` du dépôt.
-
-### Démonstration du déploiement automatique
-
-Dans notre vidéo, nous montrons un exemple concret :
-
-- modification d'un texte sur la page d'accueil ;
-- commit et push sur la branche `main` ;
-- exécution de GitHub Actions ;
-- actualisation du site pour constater la modification.
-
-Cela permet de vérifier que le code publié sur GitHub peut être déployé automatiquement sur notre serveur.
-
-**Adresse de l'application déployée :** http://56.228.24.64/
-
-## 4. Lancer l'application en local avec Docker Compose
-
-Cette méthode permet de lancer le projet sur un ordinateur disposant de Docker.
-
-### Prérequis
+#### Prérequis
 
 - Docker Desktop installé et démarré, avec Docker Compose.
-- Une connexion Internet pour le premier démarrage.
-- Les ports **8080** et **8000** disponibles.
+- Une connexion Internet pour télécharger les images et les dépendances au premier lancement.
+- Les ports `8080`, `8000` et `5432` disponibles si utilisés par la configuration Docker.
 
-### Sous Windows (PowerShell)
+#### Étape 1 — Décompresser le projet
 
-Décompresser le ZIP, puis ouvrir PowerShell dans le dossier contenant `docker-compose.yml`.
+Dans notre dossier de rendu, vous trouverez notamment :
 
-**Étape 1 — Préparer la configuration**
-
-```powershell
-Copy-Item .env.example .env
-notepad .env
+```text
+DAAR-Projet2/
+├── gutenberg-library-main.zip
+├── .env
+├── rapport.pdf
+└── demonstration.mp4
 ```
 
-Dans le fichier `.env`, remplacer `POSTGRES_PASSWORD=change-me` par un mot de passe local, puis enregistrer.
+Décompresser le fichier `gutenberg-library-main.zip`.
 
-**Étape 2 — Démarrer les services**
+Le dossier obtenu contient le code source de l'application et le fichier `docker-compose.yml`.
 
-```powershell
+#### Étape 2 — Ajouter le fichier `.env`
+
+Le fichier `.env` est fourni séparément dans notre rendu. Il contient les variables nécessaires au lancement local, notamment la configuration PostgreSQL.
+
+1. Copier le fichier `.env` fourni.
+2. Le coller dans le dossier `gutenberg-library-main`, après décompression.
+3. Vérifier qu'il se trouve au même niveau que `docker-compose.yml`.
+
+Le dossier doit alors ressembler à ceci :
+
+```text
+gutenberg-library-main/
+├── .env
+├── docker-compose.yml
+├── backend/
+├── frontend/
+├── data/
+└── ...
+```
+
+**Aucune modification du fichier `.env` n'est nécessaire.** Il est déjà configuré pour le lancement local.
+
+#### Étape 3 — Démarrer Docker Compose
+
+Ouvrir un terminal dans le dossier `gutenberg-library-main`.
+
+Exécuter :
+
+```bash
 docker compose up -d --build
 ```
 
-**Étape 3 — Vérifier que les conteneurs fonctionnent**
+Cette commande construit les images Docker et démarre les trois services :
 
-```powershell
+- `db` : base de données PostgreSQL ;
+- `backend` : API FastAPI et moteur de recherche ;
+- `frontend` : interface React servie par Nginx.
+
+Le premier lancement peut prendre quelques minutes.
+
+Vérifier les services :
+
+```bash
 docker compose ps
 ```
 
-**Étape 4 — Ouvrir l'application**
+Les services doivent être démarrés. Les services `db` et `backend` disposent de contrôles de santé.
 
-- Interface web : http://localhost:8080/
-- État du backend : http://localhost:8000/api/health
-- Documentation de l'API : http://localhost:8000/docs
+#### Étape 4 — Accéder à l'application
 
-Le premier démarrage peut prendre quelques minutes.
+Ouvrir les adresses suivantes dans un navigateur :
 
-### Sous Linux / macOS
+| Service | Adresse |
+|---|---|
+| Application web | http://localhost:8080/ |
+| État du backend | http://localhost:8000/api/health |
+| Documentation de l'API | http://localhost:8000/docs |
+
+Nous avons testé cette procédure à partir d'un ZIP téléchargé depuis GitHub et décompressé dans un nouveau dossier. Les trois conteneurs ont démarré et le site était accessible sur `localhost:8080`.
+
+#### Étape 5 — Tester les fonctionnalités
+
+Depuis le site local :
+
+1. Effectuer une recherche simple avec `whale`.
+2. Tester la recherche RegEx.
+3. Ouvrir la fiche d'un livre.
+4. Tester la lecture et les suggestions.
+
+**Important : fonctionnement avec les données d'exemple**
+
+Le ZIP du code source ne contient pas les textes de l'ensemble du corpus.
+
+Lors de notre test local, le site affichait :
+
+> Mode démonstration : 10 livres simulés, recherche et classement simulés.
+
+Ce fonctionnement est prévu lorsque les données complètes sont absentes.
+
+La version locale permet donc de vérifier le lancement Docker, l'interface et les parcours de navigation, mais elle ne permet pas d'évaluer les résultats réels des algorithmes sur les 1 700 livres.
+
+**Pour tester le moteur complet, utiliser directement le site AWS : http://56.228.24.64/**
+
+#### Vérifier les données chargées
+
+Ouvrir :
+
+http://localhost:8000/api/health
+
+Cette route indique la source des métadonnées (`postgres`, `corpus` ou `sample`) et l'état des modules (`real` ou `mock`).
+
+#### Arrêter l'application
 
 Depuis le dossier du projet :
 
 ```bash
-cp .env.example .env
-```
-
-Modifier `POSTGRES_PASSWORD` dans `.env`, puis exécuter :
-
-```bash
-docker compose up -d --build
-docker compose ps
-```
-
-Ouvrir ensuite http://localhost:8080/.
-
-### Arrêter l'application
-
-```bash
 docker compose down
 ```
+
+Cette commande arrête les conteneurs sans supprimer les volumes PostgreSQL.
 
 Pour consulter les journaux en cas de problème :
 
 ```bash
 docker compose logs --tail=80 backend
 docker compose logs --tail=80 frontend
+docker compose logs --tail=80 db
 ```
 
-**Remarque :** ne pas utiliser `docker compose down -v` si vous souhaitez conserver les données PostgreSQL.
+## 2. Fonctionnalités
 
-## 5. Données du corpus et mode démonstration
+Notre application propose :
 
-Le projet utilise plusieurs fichiers préparés à l'avance :
+- **Recherche simple :** rechercher les livres contenant un mot-clé.
+- **Recherche avancée RegEx :** rechercher plusieurs formes de mots à partir d'une expression régulière.
+- **Classement par pertinence :** combiner les occurrences des mots et les scores PageRank.
+- **Recommandations :** proposer des livres similaires grâce au graphe de Jaccard.
+- **Lecture :** consulter les informations et le texte des livres.
+- **Interface web :** accéder à l'application depuis un ordinateur ou un téléphone.
+
+### Exemples de recherches
+
+| Recherche | Fonction |
+|---|---|
+| `whale` | Recherche simple |
+| `ship` | Recherche simple |
+| `alice` | Recherche simple |
+| `whal(e\|es\|ing)` | Recherche RegEx |
+| `([a-z` | Vérification de la gestion d'une RegEx invalide |
+
+## 3. Architecture technique
+
+| Technologie | Utilisation |
+|---|---|
+| React / Vite | Interface web |
+| FastAPI / Python | API et moteur de recherche |
+| PostgreSQL | Stockage des métadonnées |
+| Docker / Docker Compose | Exécution des services |
+| AWS EC2 | Hébergement de l'application |
+| GitHub Actions | Automatisation du déploiement |
+| GitHub Container Registry (GHCR) | Stockage des images Docker |
+
+L'application est composée de trois services : `frontend`, `backend` et `db`.
+
+Les calculs de l'index inversé, du graphe de Jaccard et du PageRank sont réalisés hors ligne. Le backend charge ensuite les fichiers pré-calculés au démarrage.
+
+## 4. Corpus et algorithmes
+
+### Corpus
+
+Nous avons préparé un corpus de **1 700 livres en anglais**, issus du Projet Gutenberg via le jeu de données Hugging Face `sedthh/gutenberg_english`.
+
+Les livres sélectionnés contiennent au moins 10 000 mots.
+
+### Index inversé
+
+L'index inversé associe chaque mot aux livres qui le contiennent, avec son nombre d'occurrences.
+
+Il permet d'effectuer les recherches simples et les recherches RegEx sur les termes indexés.
+
+### Graphe de Jaccard
+
+Chaque livre correspond à un sommet du graphe.
+
+Deux livres sont reliés lorsque leur similarité de Jaccard est supérieure ou égale au seuil de **0,3**.
+
+Ce graphe est utilisé pour trouver les livres proches et produire des recommandations.
+
+### PageRank
+
+Nous calculons le PageRank sur le graphe de similarité pour estimer l'importance des livres dans le réseau.
+
+Le classement combine les occurrences des termes recherchés et les scores PageRank.
+
+### Organisation des données
 
 | Données | Emplacement |
 |---|---|
@@ -177,123 +250,148 @@ Le projet utilise plusieurs fichiers préparés à l'avance :
 | Métadonnées | PostgreSQL ou `data/metadata/` |
 | Index inversé | `data/indexes/index_complet.json` |
 | Graphe de Jaccard | `data/graphs/graph.json` |
-| PageRank | `data/graphs/pagerank.json` |
+| Scores PageRank | `data/graphs/pagerank.json` |
+| Données d'exemple | `data/sample/` |
 
-Au démarrage, le backend charge les fichiers disponibles.
+Les fichiers volumineux du corpus ne sont pas inclus dans le ZIP du code source.
 
-Si certains fichiers sont absents, l'application peut utiliser les données d'exemple et les modules simulés. Un bandeau **« Mode démonstration »** apparaît alors dans l'interface.
+## 5. Reconstituer le corpus complet en local (facultatif)
 
-Pour vérifier les données réellement chargées :
+Cette procédure permet de reconstruire les données du moteur sur un ordinateur local.
 
-http://localhost:8000/api/health
+Elle nécessite Python 3.11 ou plus récent, une connexion Internet et du temps pour le téléchargement et les calculs.
 
-Cette route indique la source des métadonnées (`postgres`, `corpus` ou `sample`) ainsi que l'état des modules (`real` ou `mock`).
+**Elle n'est pas nécessaire pour utiliser le site AWS avec le corpus complet.**
 
-**Important :** les fichiers volumineux du corpus complet ne sont pas nécessairement inclus dans l'archive ZIP. Un lancement local sans ces fichiers ne reproduit donc pas automatiquement les résultats obtenus avec les 1 700 livres.
+Depuis la racine du projet, installer les dépendances :
 
-Pour tester directement toutes les fonctionnalités sur le corpus réel, utiliser notre application en ligne :
-
-http://56.228.24.64/
-
-## 6. Reconstituer les données complètes (facultatif)
-
-Cette étape nécessite Python 3.11 ou plus récent et les dépendances Python. Elle n'est pas nécessaire pour consulter le site en ligne.
-
-Depuis la racine du projet :
-
-```powershell
+```bash
 python -m pip install -r backend/requirements.txt
 python -m pip install datasets
 ```
 
-Télécharger et préparer le corpus :
+Télécharger les livres :
 
-```powershell
+```bash
 python scripts/telecharger_depuis_huggingface.py
 ```
 
 Construire l'index inversé :
 
-```powershell
+```bash
 python -m scripts.indexer_corpus data/raw data/indexes/index_complet.json
 ```
 
 Construire le graphe de Jaccard :
 
-```powershell
+```bash
 python scripts/build_graph.py --corpus data/raw
 ```
 
 Calculer le PageRank :
 
-```powershell
+```bash
 python scripts/compute_pagerank.py
 ```
 
-Pour importer les métadonnées dans PostgreSQL, démarrer la base :
+### Importer les métadonnées dans PostgreSQL
 
-```powershell
+Démarrer la base :
+
+```bash
 docker compose up -d db
 ```
 
-Puis, sous PowerShell :
+Sous Windows PowerShell, depuis la racine du projet :
 
 ```powershell
 $env:POSTGRES_PASSWORD = (Get-Content .env | Where-Object { $_ -match '^POSTGRES_PASSWORD=' } | Select-Object -First 1) -replace '^POSTGRES_PASSWORD=', ''
 python scripts/import_metadata.py
 ```
 
-Redémarrer ensuite le backend :
+Après la préparation des données :
 
-```powershell
+```bash
 docker compose restart backend
 ```
 
-Vérifier le résultat sur http://localhost:8000/api/health.
+Vérifier ensuite :
 
-La reconstruction complète peut prendre du temps et dépend de la disponibilité de la source du corpus. Elle n'a pas été vérifiée ici sur un ordinateur vierge.
+http://localhost:8000/api/health
 
-## 7. Exemples d'utilisation de l'API
+Cette reconstruction complète n'a pas été validée sur un ordinateur vierge. Elle dépend de la disponibilité du corpus et de la configuration locale de PostgreSQL.
 
-Une fois le backend démarré, les routes suivantes peuvent être testées :
+## 6. Hébergement AWS et déploiement automatique
+
+Notre application est hébergée sur une instance **AWS EC2 Ubuntu**.
+
+Le frontend, le backend et PostgreSQL fonctionnent dans des conteneurs Docker gérés par Docker Compose.
+
+Nous avons mis en place un déploiement automatique avec **GitHub Actions**.
+
+### Fonctionnement du déploiement
+
+1. Une modification est effectuée dans le code.
+2. Un commit et un push sont réalisés sur la branche `main`.
+3. GitHub Actions déclenche le workflow de publication.
+4. Les images Docker sont construites et publiées dans **GHCR**.
+5. Le workflow de déploiement utilise un runner installé sur le serveur AWS EC2.
+6. Docker Compose met à jour les conteneurs.
+7. La nouvelle version devient accessible sur le site en ligne.
+
+Les workflows sont disponibles dans `.github/workflows/`.
+
+### Démonstration dans notre vidéo
+
+Nous montrons une modification du texte de la page d'accueil, suivie d'un commit et d'un push sur GitHub.
+
+Après l'exécution de GitHub Actions, la modification apparaît directement sur le site :
+
+http://56.228.24.64/
+
+Cette démonstration permet de vérifier le déploiement automatique sans intervention manuelle sur le serveur pour chaque mise à jour.
+
+## 7. Accès depuis plusieurs machines
+
+Le site AWS est accessible depuis plusieurs ordinateurs ou téléphones connectés à Internet :
+
+http://56.228.24.64/
+
+Dans notre vidéo, la première partie de la démonstration est réalisée sur le PC de Camille. La partie consacrée au déploiement est réalisée depuis un autre ordinateur, sur le même site.
+
+Cela montre que l'application est accessible depuis deux machines différentes.
+
+## 8. API
+
+L'API FastAPI propose notamment les routes suivantes :
 
 ```text
-GET http://localhost:8000/api/health
-GET http://localhost:8000/api/books?limit=5&offset=0
-GET http://localhost:8000/api/search?q=whale
-GET http://localhost:8000/api/books/2701
-GET http://localhost:8000/api/books/2701/text?page=1
-GET http://localhost:8000/api/books/2701/similar
-```
-
-Pour la recherche RegEx, utiliser l'interface de recherche avancée ou la route :
-
-```text
+GET /api/health
+GET /api/books?limit=5&offset=0
+GET /api/search?q=whale
 GET /api/search/advanced?regex=...
+GET /api/books/2701
+GET /api/books/2701/text?page=1
+GET /api/books/2701/similar
 ```
 
-Exemples de recherches :
+Documentation interactive de l'API locale :
 
-| Recherche | Objectif |
-|---|---|
-| `whale` | Recherche simple |
-| `ship` | Recherche d'un mot présent dans plusieurs livres |
-| `whal(e\|es\|ing)` | Recherche RegEx |
-| `([a-z` | Vérification de la gestion d'une RegEx invalide |
+http://localhost:8000/docs
 
-## 8. Tests et performances
+## 9. Tests et performances
 
 ### Tests backend
 
 Depuis la racine du projet, avec Python et les dépendances installées :
 
-```powershell
+```bash
 python -m pytest
 ```
 
 ### Tests frontend
 
-```powershell
+```bash
 cd frontend
 npm ci
 npm test
@@ -301,57 +399,65 @@ npm test
 
 ### Mesures de performance
 
-Nous avons également créé le script `benchmark_gutenberg.py` pour comparer les temps de réponse de la recherche simple et de la recherche RegEx.
+Nous avons créé le script `benchmark_gutenberg.py` pour mesurer les temps de réponse des recherches simple et RegEx.
 
-Les requêtes `whale`, `ship` et `alice` ont été exécutées 10 fois chacune sur l'application en ligne.
+Les requêtes `whale`, `ship` et `alice` ont été exécutées **10 fois chacune** sur l'application en ligne.
 
-Le script calcule les moyennes et les écarts-types et génère un graphique. Les mesures incluent le temps de communication réseau.
+Le script calcule les moyennes, les écarts-types et génère un graphique.
 
-Les résultats sont présentés dans notre rapport, avec les fichiers CSV et le graphique.
+Les mesures incluent le temps de communication réseau.
 
-## 9. Organisation du projet
+Sur les requêtes testées, la recherche simple était environ **2,5 fois plus rapide** que la recherche RegEx.
+
+Les résultats sont présentés dans notre rapport.
+
+## 10. Organisation du projet
 
 | Dossier / fichier | Rôle |
 |---|---|
-| `backend/` | API FastAPI, recherche, classement et recommandations |
+| `backend/` | API FastAPI, recherche et recommandations |
 | `frontend/` | Interface React/Vite |
-| `data/sample/` | Données d'exemple |
+| `data/sample/` | Livres d'exemple |
 | `data/raw/` | Textes du corpus, si présents |
 | `data/indexes/` | Index inversé |
 | `data/graphs/` | Graphe et PageRank |
-| `scripts/` | Téléchargement, indexation, graphe, PageRank et import |
+| `scripts/` | Préparation du corpus et calculs |
 | `tests/` | Tests automatisés |
 | `.github/workflows/` | Workflows GitHub Actions |
-| `docker-compose.yml` | Configuration des services Docker |
+| `docker-compose.yml` | Configuration Docker Compose |
+| `.env` | Configuration locale fournie séparément avec le rendu |
 | `docs/` | Documentation complémentaire |
 
-## 10. Dépannage
+## 11. Dépannage
 
 | Problème | Solution |
 |---|---|
-| Docker ne démarre pas | Vérifier que Docker Desktop est lancé |
-| Port 8080 ou 8000 déjà utilisé | Libérer le port ou adapter la configuration |
+| Docker ne démarre pas | Vérifier que Docker Desktop est ouvert |
+| Port `5432` déjà utilisé | Arrêter l'ancien conteneur PostgreSQL ou le service qui occupe ce port |
+| Port `8080` ou `8000` occupé | Libérer le port concerné |
 | Backend non prêt | Consulter `docker compose logs --tail=80 backend` |
-| Bandeau « Mode démonstration » | Vérifier les données disponibles et `/api/health` |
-| Aucun livre dans PostgreSQL | Vérifier l'import des métadonnées |
-| Modification des données non visible | Exécuter `docker compose restart backend` |
-| Le site AWS est inaccessible | Vérifier la connexion Internet et la disponibilité du serveur |
+| Bandeau « Mode démonstration » | Les données complètes sont absentes ; utiliser le site AWS pour tester le moteur réel |
+| PostgreSQL ne contient aucun livre | Vérifier l'import des métadonnées |
+| Nouvelles données non chargées | Exécuter `docker compose restart backend` |
+| Site AWS inaccessible | Vérifier la connexion Internet et la disponibilité du serveur |
 
-## 11. Contenu du rendu
+## 12. Contenu du rendu
 
-Le rendu comprend :
+Notre rendu comprend :
 
-- Le code source de l'application.
-- Les fichiers Docker et Docker Compose.
-- Les scripts de préparation du corpus et des algorithmes.
-- Les tests et les mesures de performance.
-- Le README et la documentation.
+- Le ZIP du code source téléchargé depuis GitHub.
+- Le fichier `.env` déjà configuré pour le lancement local.
 - Le rapport du projet.
 - La vidéo de présentation et de démonstration.
+- Les scripts, les tests et la documentation présents dans le dépôt.
 
-Le corpus complet pouvant dépasser la taille autorisée pour l'archive, la version déployée sur AWS permet de tester l'application avec les données réelles.
+Le ZIP du code source ne contient pas les textes volumineux du corpus complet.
 
-**Application :** http://56.228.24.64/  
-**Code source :** https://github.com/divcamillediv/gutenberg-library
+**Pour évaluer les fonctionnalités et les algorithmes sur les données réelles, utiliser le site AWS.**
 
-**Projet réalisé par Kenza, Nadine et Camille — Master Informatique, DAAR, Projet 2.**
+---
+
+**Application en ligne :** http://56.228.24.64/  
+**Dépôt GitHub :** https://github.com/divcamillediv/gutenberg-library
+
+**Kenza, Nadine et Camille — Projet 2 DAAR**
