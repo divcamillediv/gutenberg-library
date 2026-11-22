@@ -19,7 +19,7 @@ export default function Home() {
           marginBottom: "12px",
         }}
       >
-        Bonjour !
+        Bonjour à tous !
       </p>
 
       <h1>Cherchez dans le texte de toute la bibliothèque</h1>
