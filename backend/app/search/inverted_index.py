@@ -1,5 +1,16 @@
 """Index inverse construit a partir des mots nettoyes des livres."""
+import json
+import logging
 import re
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+# Nom du fichier produit par `python -m scripts.indexer_corpus data/raw data/indexes/index_complet.json`.
+NOM_FICHIER_INDEX = "index_complet.json"
+
+# Index chargé une seule fois au démarrage de l'API (voir load_index).
+index_charge: dict[str, dict[str, int]] = {}
 
 def creer_index(livres: dict[str, list[str]]) -> dict[str, dict[str, int]]:
     """Construit un index avec les mots et leurs occurrences dans chaque livre."""
@@ -125,3 +136,24 @@ def chercher_regex(
                 resultats[livre_id] = resultats.get(livre_id, 0) + frequence
 
     return resultats
+
+
+
+def load_index(dossier: Path) -> dict[str, dict[str, int]]:
+    """Charge l'index inversé enregistré par scripts/indexer_corpus.py.
+
+    Appelée une seule fois au démarrage de l'API. Lève FileNotFoundError si
+    l'index n'a pas été construit : l'API passe alors en simulation.
+    """
+    global index_charge
+
+    chemin = Path(dossier) / NOM_FICHIER_INDEX
+    with chemin.open("r", encoding="utf-8") as fichier:
+        index = json.load(fichier)
+
+    if not isinstance(index, dict) or not index:
+        raise ValueError(f"Index vide ou mal formé : {chemin}")
+
+    index_charge = index
+    logger.info("Index chargé : %d termes", len(index_charge))
+    return index_charge

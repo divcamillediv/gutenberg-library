@@ -196,6 +196,9 @@ concaténation de toutes les pages redonne exactement le texte nettoyé.
   ],
   "suggestions": [
     {"id": 456, "title": "Another book", "author": "Author", "similarity": 0.71}
+  ],
+  "title_matches": [
+    {"id": 789, "title": "Ship Stories", "author": "Author"}
   ]
 }
 ```
@@ -205,6 +208,10 @@ concaténation de toutes les pages redonne exactement le texte nettoyé.
 - `results` : triés par `score` décroissant ; `score` est normalisé dans [0, 1].
 - `suggestions` : voisins Jaccard des 3 meilleurs résultats, sans doublon, sans les livres
   affichés sur la page ; triés par `similarity` décroissante (au plus 6).
+- `title_matches` (recherche simple, première page) : jusqu'à 5 livres dont le titre ou
+  l'auteur, lus dans la base, contiennent tous les mots utiles de la requête. Complément
+  hors classement ; les livres déjà présents dans `results` ne sont pas répétés.
+  Toujours `[]` pour la recherche RegEx.
 - Aucun résultat : `200` avec `total: 0`, `results: []`, `suggestions: []`.
 
 Ajouts par rapport à l'exemple des instructions, **à valider** : `mode`, `limit`, `offset`,
@@ -223,7 +230,8 @@ et `author` dans les suggestions.
  "modules": {"search": "mock", "regex": "mock", "ranking": "mock", "recommendations": "mock"}}
 ```
 
-`data_source` vaut `"corpus"` dès que `data/metadata/books.json` existe. Chaque module vaut
+`data_source` vaut `"postgres"` si les métadonnées viennent de PostgreSQL (`POSTGRES_PASSWORD`
+défini et base joignable), sinon `"corpus"` si `data/metadata/books.json` existe, sinon `"sample"`. Chaque module vaut
 `"real"` quand la fonction de l'équipe est implémentée, `"mock"` tant qu'elle est en TODO.
 
 ### Erreurs

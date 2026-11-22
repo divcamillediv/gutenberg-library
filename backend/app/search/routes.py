@@ -12,7 +12,7 @@ from app import integration
 from app.books.service import book_service
 from app.config import settings
 from app.errors import InvalidRegexError
-from app.books.schemas import SearchResponse, SearchResult
+from app.books.schemas import BookSummary, SearchResponse, SearchResult
 
 router = APIRouter(prefix="/api/search", tags=["search"])
 
@@ -69,7 +69,17 @@ def search(
             status_code=400,
             detail=f"La requête dépasse {settings.max_query_length} caractères.",
         )
-    return _build_response(query, "simple", integration.search_simple(query), limit, offset)
+    response = _build_response(query, "simple", integration.search_simple(query), limit, offset)
+    # Complément : livres dont le titre ou l'auteur correspond, affichés à part du classement.
+    # Les livres déjà affichés dans les résultats de la page ne sont pas répétés.
+    if offset == 0:
+        shown = {r.id for r in response.results}
+        response.title_matches = [
+            BookSummary(id=b["id"], title=b["title"], author=b["author"])
+            for b in book_service.match_metadata(query, limit=5 + len(shown))
+            if b["id"] not in shown
+        ][:5]
+    return response
 
 
 @router.get("/advanced", response_model=SearchResponse, summary="Recherche avancée par RegEx")

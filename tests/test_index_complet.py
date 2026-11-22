@@ -8,9 +8,10 @@ from backend.app.search.recherche import rechercher_livres
 from backend.app.search.inverted_index import chercher_regex
 
 
-DOSSIER_LIVRES = Path("data/raw")
-CHEMIN_INDEX = Path("data/indexes/index_complet.json")
-
+# Chemins résolus depuis la racine du dépôt, quel que soit le dossier courant.
+RACINE = Path(__file__).resolve().parents[1]
+DOSSIER_LIVRES = RACINE / "data" / "raw"
+CHEMIN_INDEX = RACINE / "data" / "indexes" / "index_complet.json"
 
 # Le corpus complet et son index ne sont pas versionnés sur GitHub.
 # Les tests restent obligatoires lors de leur exécution locale.
@@ -26,7 +27,6 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture(scope="module")
 def index_complet():
-    assert CHEMIN_INDEX.exists(), "L'index complet est introuvable"
     return charger_index(CHEMIN_INDEX)
 
 

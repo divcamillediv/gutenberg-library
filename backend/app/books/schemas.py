@@ -62,6 +62,14 @@ class Suggestion(BaseModel):
     similarity: float = Field(description="Similarité de Jaccard dans [0, 1]")
 
 
+class BookSummary(BaseModel):
+    """Livre trouvé par son titre ou son auteur (métadonnées de la base)."""
+
+    id: int
+    title: str
+    author: str
+
+
 class SearchResponse(BaseModel):
     """Réponse de /api/search et /api/search/advanced."""
 
@@ -72,6 +80,11 @@ class SearchResponse(BaseModel):
     offset: int
     results: list[SearchResult]
     suggestions: list[Suggestion]
+    title_matches: list[BookSummary] = Field(
+        default_factory=list,
+        description="Recherche simple : livres dont le titre ou l'auteur contient la requête "
+        "(complément, hors classement)",
+    )
 
 
 class SimilarResponse(BaseModel):
@@ -95,5 +108,5 @@ class Health(BaseModel):
 
     status: str
     books_loaded: int
-    data_source: Literal["corpus", "sample"]
+    data_source: Literal["postgres", "corpus", "sample"]
     modules: ModuleStatus

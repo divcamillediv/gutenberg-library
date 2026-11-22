@@ -9,6 +9,22 @@ jobs:
   backend:
     name: Backend (pytest)
     runs-on: ubuntu-latest
+    services:
+      # Base de test pour tests/test_postgres.py (table temporaire, aucune donnée réelle).
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: gutenberg
+          POSTGRES_USER: gutenberg
+          POSTGRES_PASSWORD: ci-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U gutenberg -d gutenberg"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_PASSWORD: ci-password
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -35,9 +51,7 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - name: Installer les dépendances
-        run: 
-          npm install -D @vitejs/plugin-react@^5.2.0
-          npm ci
+        run: npm ci
       - name: Lancer les tests
         run: npm test
       - name: Construire l'application

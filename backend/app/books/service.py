@@ -56,26 +56,67 @@ class BookService:
     def __init__(self) -> None:
         self._books: dict[int, dict] = {}
         self._order: list[int] = []
+        self._metadata_words: dict[int, tuple[set[str], set[str]]] | None = None
         self.source: str = "sample"
 
     # ------------------------------------------------------------------ chargement
     def load(self) -> None:
-        """Charge les métadonnées (corpus réel si présent, sinon jeu d'exemple)."""
-        if settings.metadata_file.exists():
-            path, self.source = settings.metadata_file, "corpus"
-        else:
-            path, self.source = settings.sample_metadata_file, "sample"
-            logger.warning(
-                "Corpus réel absent (%s) : utilisation des livres simulés.",
-                settings.metadata_file,
-            )
+        """Charge les métadonnées une seule fois au démarrage.
 
-        raw = json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
-        self._books = {int(book["id"]): book for book in raw}
+        Ordre de priorité :
+        1. PostgreSQL, si POSTGRES_PASSWORD est défini et la base joignable ;
+        2. data/metadata/books.json, s'il existe ;
+        3. les 10 livres simulés de data/sample/.
+        """
+        raw, origin = self._load_from_postgres(), "PostgreSQL"
+        if raw is not None:
+            self.source = "postgres"
+        elif settings.metadata_file.exists():
+            path = settings.metadata_file
+            raw, origin, self.source = json.loads(path.read_text(encoding="utf-8")), str(path), "corpus"
+        else:
+            path = settings.sample_metadata_file
+            logger.warning("Corpus réel absent : utilisation des livres simulés (%s).", path)
+            raw = json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
+            origin, self.source = str(path), "sample"
+
+        self._books = {int(book["id"]): self._normalize(book) for book in raw}
         self._order = sorted(self._books, key=lambda i: (self._books[i]["title"].lower(), i))
+        self._metadata_words = None
         self._read_text.cache_clear()
         self._page_offsets.cache_clear()
-        logger.info("%d livres chargés depuis %s", len(self._books), path)
+        logger.info("%d livres chargés depuis %s", len(self._books), origin)
+
+    @staticmethod
+    def _load_from_postgres() -> list[dict] | None:
+        """Métadonnées depuis PostgreSQL, ou None si la base n'est pas configurée ou joignable."""
+        if not settings.use_postgres:
+            return None
+        try:
+            from app.config.database import load_books_from_postgres
+
+            books = load_books_from_postgres()
+        except Exception as exc:  # pilote absent, base arrêtée, mot de passe faux, table absente...
+            logger.error("PostgreSQL indisponible (%s) : repli sur les fichiers.", exc)
+            return None
+        if not books:
+            logger.error("La table books de PostgreSQL est vide : repli sur les fichiers.")
+            return None
+        return books
+
+    @staticmethod
+    def _normalize(book: dict) -> dict:
+        """Complète une ligne de métadonnées pour respecter le contrat de l'API."""
+        book_id = int(book["id"])
+        return {
+            "id": book_id,
+            "title": book.get("title") or f"Livre {book_id}",
+            "author": book.get("author") or "",
+            "language": book.get("language") or "en",
+            "word_count": int(book.get("word_count") or 0),
+            "file_path": book["file_path"],
+            "source_url": book.get("source_url") or f"https://www.gutenberg.org/ebooks/{book_id}",
+        }
 
     # ---------------------------------------------------------------- métadonnées
     def count(self) -> int:
@@ -88,6 +129,33 @@ class BookService:
         """Retourne (total, livres de la page), triés par titre."""
         ids = self._order[offset : offset + limit]
         return len(self._order), [self._books[i] for i in ids]
+
+    def match_metadata(self, query: str, limit: int = 5) -> list[dict]:
+        """Livres dont le titre ou l'auteur contient tous les mots utiles de la requête.
+
+        Même nettoyage que l'index (minuscules, lettres seulement, sans stopwords).
+        Les titres qui contiennent les mots passent avant les auteurs, puis ordre alphabétique.
+        """
+        from app.search.nettoyage import decouper_mots, supprimer_stopwords
+        from app.search.stopwords import STOPWORDS_ANGLAIS
+
+        words = supprimer_stopwords(decouper_mots(query), STOPWORDS_ANGLAIS)
+        if not words:
+            return []
+        if self._metadata_words is None:
+            self._metadata_words = {
+                book_id: (set(decouper_mots(book["title"])), set(decouper_mots(book["author"])))
+                for book_id, book in self._books.items()
+            }
+        matches = []
+        for book_id in self._order:
+            title_words, author_words = self._metadata_words[book_id]
+            if all(w in title_words for w in words):
+                matches.append((0, book_id))
+            elif all(w in title_words or w in author_words for w in words):
+                matches.append((1, book_id))
+        matches.sort(key=lambda m: m[0])  # tri stable : l'ordre alphabétique est conservé
+        return [self._books[book_id] for _, book_id in matches[:limit]]
 
     def find(self, book_id: int) -> dict | None:
         return self._books.get(book_id)

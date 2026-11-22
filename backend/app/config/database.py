@@ -1,4 +1,4 @@
-""""Connexion du backend à PostgreSQL et chargement des métadonnées."""
+"""Connexion du backend à PostgreSQL et chargement des métadonnées."""
 
 import os
 
@@ -14,6 +14,7 @@ def get_connection():
         dbname=os.getenv("POSTGRES_DB", "gutenberg"),
         user=os.getenv("POSTGRES_USER", "gutenberg"),
         password=os.environ["POSTGRES_PASSWORD"],
+        connect_timeout=int(os.getenv("POSTGRES_CONNECT_TIMEOUT", "3")),
         row_factory=dict_row
     )
 
@@ -23,14 +24,16 @@ def load_books_from_postgres() -> list[dict]:
     with get_connection() as connexion:
         with connexion.cursor() as curseur:
             curseur.execute("""
-                            SELECT
-                                CAST(id AS INTEGER) AS id,
-                                title,
-                                COALESCE(authors, '') AS author,
-                                COALESCE(language, 'en') AS language,
+                SELECT
+                    CAST(id AS INTEGER) AS id,
+                    title,
+                    COALESCE(authors, '') AS author,
+                    COALESCE(language, 'en') AS language,
                     word_count,
-                    'data/' || file_path AS file_path
-                            FROM books
-                            """)
+                    'data/' || file_path AS file_path,
+                    'https://www.gutenberg.org/ebooks/' || id AS source_url
+                FROM books
+                ORDER BY title, CAST(id AS INTEGER)
+            """)
 
             return curseur.fetchall()

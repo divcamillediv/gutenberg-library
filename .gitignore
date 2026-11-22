@@ -33,3 +33,4 @@ Thumbs.db
 /data/metadata/*
 !/data/metadata/.gitkeep
 patches/
+docs/
