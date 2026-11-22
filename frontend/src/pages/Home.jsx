@@ -1,3 +1,4 @@
+
 import { Link, useNavigate } from "react-router-dom";
 import SearchBar from "../components/SearchBar.jsx";
 
@@ -9,6 +10,18 @@ export default function Home() {
 
   return (
     <section className="hero">
+      <p
+        style={{
+          fontFamily: "Georgia, serif",
+          fontSize: "1.35rem",
+          fontWeight: 600,
+          color: "#205847",
+          marginBottom: "12px",
+        }}
+      >
+        Bonjour !
+      </p>
+
       <h1>Cherchez dans le texte de toute la bibliothèque</h1>
       <p className="lead">
         Un mot-clé suffit : les livres qui le contiennent sont classés par pertinence,
@@ -23,11 +36,14 @@ export default function Home() {
       <p className="examples">
         Essayer :{" "}
         {EXAMPLES.map((word) => (
-          <button key={word} type="button" className="chip" onClick={() => go(word)}>{word}</button>
+          <button key={word} type="button" className="chip" onClick={() => go(word)}>
+            {word}
+          </button>
         ))}
       </p>
       <p className="muted">
-        Besoin d'un motif plus précis ? Utilisez la <Link to="/advanced">recherche avancée par RegEx</Link>{" "}
+        Besoin d'un motif plus précis ? Utilisez la{" "}
+        <Link to="/advanced">recherche avancée par RegEx</Link>{" "}
         ou parcourez le <Link to="/books">catalogue</Link>.
       </p>
     </section>
