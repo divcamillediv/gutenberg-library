@@ -1,183 +1,357 @@
-# DAAR — Moteur de recherche de livres
+# DAAR — Bibliothèque Gutenberg
 
-Application web de recherche dans une bibliothèque de livres du projet Gutenberg :
-recherche par mot-clé, recherche avancée par RegEx, classement par pertinence (occurrences
-et PageRank sur le graphe de Jaccard), suggestions de livres voisins, lecture du texte.
+Application web de recherche et de lecture de livres du Projet Gutenberg, réalisée par **Kenza, Nadine et Camille** dans le cadre du projet 2 de DAAR.
 
-## Fonctionnement
+**Application en ligne :** http://56.228.24.64/  
+**Dépôt GitHub :** https://github.com/divcamillediv/gutenberg-library
 
-Au démarrage, l'API charge une seule fois :
+## Fonctionnalités
 
-| Donnée | Source | Si absente |
-|---|---|---|
-| Métadonnées des livres | PostgreSQL (si `POSTGRES_PASSWORD` est défini), sinon `data/metadata/books.json` | 10 livres d'exemple de `data/sample/` |
-| Index inversé | `data/indexes/index_complet.json` | Recherche simulée |
-| Graphe de Jaccard, PageRank | `data/graphs/graph.json`, `data/graphs/pagerank.json` | Classement et suggestions simulés |
+- Recherche simple par mot-clé et recherche avancée par expression régulière (RegEx).
+- Classement des résultats selon les occurrences des mots et le PageRank.
+- Recommandations de livres à partir d'un graphe de similarité de Jaccard.
+- Consultation des informations des livres et lecture de leur texte dans le navigateur.
+- Interface accessible depuis un ordinateur ou un téléphone.
 
-`/api/health` indique la source des métadonnées (`postgres`, `corpus` ou `sample`) et,
-module par module, `real` ou `mock`. L'interface affiche un bandeau « Mode démonstration »
-tant qu'une partie est simulée.
+Le corpus préparé contient **1 700 livres**. Lors de notre dernière vérification, **1 697 livres** étaient chargés sur l'application en ligne.
 
-## Organisation
+## 1. Tester directement l'application en ligne
 
-- `backend/app/main.py`, `config/`, `books/` : point d'entrée, configuration, accès aux livres.
-- `backend/app/search` : routes de recherche, accès à l'index, recherche simple et RegEx.
-- `backend/app/recommendations` : Jaccard, matrice, graphe et recommandations.
-- `backend/app/ranking` : PageRank et classement.
-- `backend/app/integration.py`, `mocks.py` : branchement des modules et moteur simulé.
-- `frontend` : interface web (pages, composants, appels à l'API).
-- `scripts` : préparation hors ligne du corpus et des artefacts.
-- `tests` : tests pytest (API active ; autres modules à développer progressivement).
-- `data/sample` : jeux d'exemple versionnés (voir `data/sample/README.md`).
-- `docs` : contrats proposés, étapes de développement et documentation.
+L'application est déjà déployée sur un serveur **AWS EC2** et accessible depuis Internet :
 
-Les calculs de matrice, de graphe et de PageRank doivent être réalisés hors ligne.
-L'API charge les artefacts persistés au démarrage au lieu de les recalculer à chaque requête.
-L'infrastructure et l'intégration sont collectives.
+**http://56.228.24.64/**
 
-## Installation et démarrage
+Aucune installation n'est nécessaire. Il suffit d'ouvrir cette adresse dans un navigateur.
 
-Prérequis : Python 3.11 ou plus récent, Node.js 20 ou plus récent, Docker (pour la base).
+Quelques fonctionnalités à tester :
 
-### 1. Configuration
+1. Rechercher `whale` dans la barre de recherche.
+2. Ouvrir la recherche avancée et saisir `whal(e|es|ing)`.
+3. Consulter les résultats classés par pertinence.
+4. Ouvrir un livre pour lire son texte.
+5. Consulter les suggestions de livres similaires.
 
-```bash
-cp .env.example .env      # puis remplacer POSTGRES_PASSWORD=change-me par un vrai mot de passe
-```
+Cette version utilise les données réelles du corpus. Elle nécessite une connexion Internet et la disponibilité du serveur AWS.
 
-### 2. Données (une fois, hors ligne)
+Le même site peut être ouvert depuis plusieurs ordinateurs différents. C'est notamment ce que nous montrons dans notre vidéo de démonstration.
 
-Depuis la racine, environnement virtuel activé (voir étape 4) :
+## 2. Architecture et technologies
 
-```bash
-python scripts/telecharger_depuis_huggingface.py                              # data/raw + data/metadata (pip install datasets)
-python -m scripts.indexer_corpus data/raw data/indexes/index_complet.json     # index inversé
-python scripts/build_graph.py --corpus data/raw                               # data/graphs/graph.json
-python scripts/compute_pagerank.py                                            # data/graphs/pagerank.json
-```
+Notre application utilise les technologies suivantes :
 
-### 3. Base de données
-
-```bash
-docker compose -f docker-compose.storage.yml --env-file .env up -d           # PostgreSQL seul, port 5432 local
-set -a; source .env; set +a                                                   # exporte POSTGRES_PASSWORD...
-python scripts/import_metadata.py                                             # remplit la table books
-```
-
-Sans base (pas de `POSTGRES_PASSWORD`), l'API lit `data/metadata/books.json` ou, à défaut,
-les 10 livres d'exemple.
-
-### 4. Backend et frontend
-
-```bash
-# Terminal 1 — backend
-cd backend
-python -m venv .venv
-source .venv/bin/activate          # Windows : .venv\Scripts\activate
-pip install -r requirements.txt
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 --env-file ../.env
-
-# Terminal 2 — frontend (une fois le backend démarré)
-cd frontend
-npm install
-npm run dev
-```
-
-- Application : <http://localhost:5173>
-- État de l'API : <http://localhost:8000/api/health>
-- Documentation de l'API : <http://localhost:8000/docs>
-
-Au démarrage, le backend doit afficher « 1700 livres chargés depuis PostgreSQL » et
-« Chargé : index inversé », « graphe de Jaccard », « PageRank ». Le serveur Vite relaie
-`/api` vers le backend.
-
-### Avec Docker (base + backend + frontend)
-
-```bash
-docker compose up --build -d db                  # démarre la base
-python scripts/import_metadata.py                # une fois, variables de .env exportées
-docker compose up --build
-```
-
-- Application : <http://localhost:8080>
-- Documentation de l'API : <http://localhost:8000/docs>
-
-Les données de `data/` (textes, index, graphe) sont montées en lecture seule dans le backend.
-
-## Utilisation depuis plusieurs machines
-
-1. Connecter le serveur et les clients au même réseau (Wi-Fi ou partage de connexion).
-2. Trouver l'adresse IP du serveur : `ipconfig` (Windows), `ipconfig getifaddr en0` (macOS),
-   `hostname -I` (Linux).
-3. Sur chaque client (PC, téléphone), ouvrir `http://<IP-du-serveur>:5173` (développement)
-   ou `http://<IP-du-serveur>:8080` (Docker).
-
-## Exemples de requêtes
-
-Dans l'interface : saisir un mot-clé sur l'accueil, ou une expression régulière dans
-l'onglet RegEx. Directement sur l'API (jeu d'exemple) :
-
-```bash
-curl "http://localhost:8000/api/health"
-curl "http://localhost:8000/api/books?limit=5&offset=0"
-curl "http://localhost:8000/api/books/2701"
-curl "http://localhost:8000/api/books/2701/text?page=1"
-curl "http://localhost:8000/api/books/2701/similar"
-curl "http://localhost:8000/api/search?q=whale"
-curl -G "http://localhost:8000/api/search/advanced" --data-urlencode "regex=whal(e|es|ing)"
-```
-
-| Requête | Résultat attendu sur le jeu d'exemple |
+| Technologie | Utilisation |
 |---|---|
-| `q=moby dick` | *Moby Dick* |
-| `q=harpooner` | Un seul livre, *Moby Dick* : le mot n'apparaît dans aucun titre |
-| `q=ship` | Plusieurs livres classés par score décroissant, avec suggestions |
-| `q=zzzz` | `total: 0`, listes vides |
-| `q=` (vide) | Erreur `400` |
-| `regex=sea.*` | Livres contenant un mot commençant par `sea` |
-| `regex=(bad` | Erreur `400` avec le motif de l'erreur |
+| React / Vite | Interface web |
+| FastAPI / Python | API, recherche et algorithmes |
+| PostgreSQL | Stockage des métadonnées des livres |
+| Docker / Docker Compose | Conteneurisation et lancement des services |
+| AWS EC2 | Hébergement de l'application |
+| GitHub Actions | Intégration et déploiement automatiques |
+| GitHub Container Registry (GHCR) | Stockage des images Docker |
 
-Le format complet des réponses est dans [docs/api_contract.md](docs/api_contract.md).
+L'application est organisée autour de trois services Docker :
 
-## Tests
+- **frontend** : interface React servie par Nginx ;
+- **backend** : API FastAPI et moteur de recherche ;
+- **db** : base de données PostgreSQL.
 
-```bash
-# Depuis la racine, environnement virtuel activé
-python -m pytest            # API ; les tests des modules algorithmiques sont ignorés (squelettes)
+Docker Compose permet de gérer ces trois services ensemble.
 
-cd frontend
-npm test                    # client de l'API + parcours recherche → résultats → lecture → suggestions
+Les calculs de l'index inversé, du graphe de Jaccard et du PageRank sont réalisés hors ligne. Les résultats sont enregistrés dans des fichiers que le backend charge au démarrage.
+
+## 3. Déploiement sur AWS et GitHub Actions
+
+Notre application est hébergée sur une instance **AWS EC2 Ubuntu**.
+
+Les services frontend, backend et PostgreSQL sont exécutés dans des conteneurs Docker. Docker Compose permet de les démarrer et de les maintenir ensemble sur le serveur.
+
+Nous avons également mis en place un déploiement automatique avec **GitHub Actions**.
+
+### Fonctionnement du déploiement
+
+1. Une modification est effectuée dans le code du projet.
+2. Le code est envoyé sur la branche `main` avec `git push`.
+3. GitHub Actions déclenche le workflow de publication.
+4. Les images Docker sont construites et publiées dans **GHCR**.
+5. Le workflow de déploiement utilise un runner installé sur notre serveur AWS EC2.
+6. Les conteneurs sont mis à jour avec Docker Compose.
+7. La nouvelle version devient accessible sur le même site, sans déploiement manuel.
+
+Les workflows se trouvent dans le dossier `.github/workflows/` du dépôt.
+
+### Démonstration du déploiement automatique
+
+Dans notre vidéo, nous montrons un exemple concret :
+
+- modification d'un texte sur la page d'accueil ;
+- commit et push sur la branche `main` ;
+- exécution de GitHub Actions ;
+- actualisation du site pour constater la modification.
+
+Cela permet de vérifier que le code publié sur GitHub peut être déployé automatiquement sur notre serveur.
+
+**Adresse de l'application déployée :** http://56.228.24.64/
+
+## 4. Lancer l'application en local avec Docker Compose
+
+Cette méthode permet de lancer le projet sur un ordinateur disposant de Docker.
+
+### Prérequis
+
+- Docker Desktop installé et démarré, avec Docker Compose.
+- Une connexion Internet pour le premier démarrage.
+- Les ports **8080** et **8000** disponibles.
+
+### Sous Windows (PowerShell)
+
+Décompresser le ZIP, puis ouvrir PowerShell dans le dossier contenant `docker-compose.yml`.
+
+**Étape 1 — Préparer la configuration**
+
+```powershell
+Copy-Item .env.example .env
+notepad .env
 ```
 
-## Git et intégration continue
+Dans le fichier `.env`, remplacer `POSTGRES_PASSWORD=change-me` par un mot de passe local, puis enregistrer.
 
-Le workflow `.github/workflows/ci.yml` s'exécute à chaque push sur `main` ou sur une
-branche `feature/**`, et à chaque Pull Request :
+**Étape 2 — Démarrer les services**
 
-| Job | Étapes |
+```powershell
+docker compose up -d --build
+```
+
+**Étape 3 — Vérifier que les conteneurs fonctionnent**
+
+```powershell
+docker compose ps
+```
+
+**Étape 4 — Ouvrir l'application**
+
+- Interface web : http://localhost:8080/
+- État du backend : http://localhost:8000/api/health
+- Documentation de l'API : http://localhost:8000/docs
+
+Le premier démarrage peut prendre quelques minutes.
+
+### Sous Linux / macOS
+
+Depuis le dossier du projet :
+
+```bash
+cp .env.example .env
+```
+
+Modifier `POSTGRES_PASSWORD` dans `.env`, puis exécuter :
+
+```bash
+docker compose up -d --build
+docker compose ps
+```
+
+Ouvrir ensuite http://localhost:8080/.
+
+### Arrêter l'application
+
+```bash
+docker compose down
+```
+
+Pour consulter les journaux en cas de problème :
+
+```bash
+docker compose logs --tail=80 backend
+docker compose logs --tail=80 frontend
+```
+
+**Remarque :** ne pas utiliser `docker compose down -v` si vous souhaitez conserver les données PostgreSQL.
+
+## 5. Données du corpus et mode démonstration
+
+Le projet utilise plusieurs fichiers préparés à l'avance :
+
+| Données | Emplacement |
 |---|---|
-| `backend` | Installation de `backend/requirements.txt`, puis `python -m pytest` |
-| `frontend` | `npm ci`, `npm test`, `npm run build` |
+| Textes des livres | `data/raw/` |
+| Métadonnées | PostgreSQL ou `data/metadata/` |
+| Index inversé | `data/indexes/index_complet.json` |
+| Graphe de Jaccard | `data/graphs/graph.json` |
+| PageRank | `data/graphs/pagerank.json` |
 
-Une CI verte prouve que la couche web fonctionne et que rien n'est cassé à l'import. Elle
-ne valide pas les algorithmes tant que leurs tests sont ignorés : en écrivant les vrais
-tests d'un module, retirer le `pytest.skip` du fichier concerné.
+Au démarrage, le backend charge les fichiers disponibles.
 
-Les données volumineuses (`data/raw`, `processed`, `indexes`, `graphs`, `metadata`) et
-les secrets sont exclus du versionnement. Jeux d'exemple, scripts, tests et documents sont
-versionnés.
+Si certains fichiers sont absents, l'application peut utiliser les données d'exemple et les modules simulés. Un bandeau **« Mode démonstration »** apparaît alors dans l'interface.
 
-## Dépannage
+Pour vérifier les données réellement chargées :
 
-| Symptôme | Cause probable | Solution |
-|---|---|---|
-| Recherche sans réponse, ou « Le serveur est injoignable » | Backend arrêté, ou frontend lancé avant lui | Vérifier <http://localhost:8000/api/health>, puis arrêter et relancer `npm run dev` |
-| `http proxy error` / `ECONNREFUSED` dans le terminal Vite | Le relais Vite ne joint pas le backend | Vérifier que le backend écoute sur le port 8000 ; sinon définir `VITE_PROXY_TARGET` et relancer `npm run dev` |
-| « PostgreSQL indisponible » dans le terminal du backend | Base arrêtée, mauvais mot de passe, ou `--env-file ../.env` oublié | `docker compose -f docker-compose.storage.yml --env-file .env up -d` ; vérifier `.env` |
-| « La table books de PostgreSQL est vide » | Métadonnées non importées | `python scripts/import_metadata.py` |
-| Bandeau « Mode démonstration » | `data/metadata/books.json` absent, ou module encore en squelette | Normal tant que le corpus et les algorithmes ne sont pas livrés ; détail sur `/api/health` |
-| « Le texte du livre n'est pas disponible » | `file_path` ne pointe pas vers un fichier de `data/` | Vérifier le fichier texte et le chemin relatif dans les métadonnées |
-| La page ne s'ouvre pas depuis un autre appareil | Pare-feu, ou réseau qui isole les appareils (eduroam, Wi-Fi invité) | Autoriser le port 5173 (ou 8080) ; passer par un partage de connexion |
-| `address already in use` | Port 8000, 5173 ou 8080 occupé | Arrêter l'autre programme, ou changer de port (`--port`, `.env`) |
-| `ModuleNotFoundError: app` | `uvicorn` lancé hors de `backend/` | `cd backend` avant de lancer `uvicorn` ; pour `pytest`, se placer à la racine |
-| Données non prises en compte | Le backend charge les fichiers au démarrage | Redémarrer le backend (`docker compose restart backend` avec Docker) |
+http://localhost:8000/api/health
+
+Cette route indique la source des métadonnées (`postgres`, `corpus` ou `sample`) ainsi que l'état des modules (`real` ou `mock`).
+
+**Important :** les fichiers volumineux du corpus complet ne sont pas nécessairement inclus dans l'archive ZIP. Un lancement local sans ces fichiers ne reproduit donc pas automatiquement les résultats obtenus avec les 1 700 livres.
+
+Pour tester directement toutes les fonctionnalités sur le corpus réel, utiliser notre application en ligne :
+
+http://56.228.24.64/
+
+## 6. Reconstituer les données complètes (facultatif)
+
+Cette étape nécessite Python 3.11 ou plus récent et les dépendances Python. Elle n'est pas nécessaire pour consulter le site en ligne.
+
+Depuis la racine du projet :
+
+```powershell
+python -m pip install -r backend/requirements.txt
+python -m pip install datasets
+```
+
+Télécharger et préparer le corpus :
+
+```powershell
+python scripts/telecharger_depuis_huggingface.py
+```
+
+Construire l'index inversé :
+
+```powershell
+python -m scripts.indexer_corpus data/raw data/indexes/index_complet.json
+```
+
+Construire le graphe de Jaccard :
+
+```powershell
+python scripts/build_graph.py --corpus data/raw
+```
+
+Calculer le PageRank :
+
+```powershell
+python scripts/compute_pagerank.py
+```
+
+Pour importer les métadonnées dans PostgreSQL, démarrer la base :
+
+```powershell
+docker compose up -d db
+```
+
+Puis, sous PowerShell :
+
+```powershell
+$env:POSTGRES_PASSWORD = (Get-Content .env | Where-Object { $_ -match '^POSTGRES_PASSWORD=' } | Select-Object -First 1) -replace '^POSTGRES_PASSWORD=', ''
+python scripts/import_metadata.py
+```
+
+Redémarrer ensuite le backend :
+
+```powershell
+docker compose restart backend
+```
+
+Vérifier le résultat sur http://localhost:8000/api/health.
+
+La reconstruction complète peut prendre du temps et dépend de la disponibilité de la source du corpus. Elle n'a pas été vérifiée ici sur un ordinateur vierge.
+
+## 7. Exemples d'utilisation de l'API
+
+Une fois le backend démarré, les routes suivantes peuvent être testées :
+
+```text
+GET http://localhost:8000/api/health
+GET http://localhost:8000/api/books?limit=5&offset=0
+GET http://localhost:8000/api/search?q=whale
+GET http://localhost:8000/api/books/2701
+GET http://localhost:8000/api/books/2701/text?page=1
+GET http://localhost:8000/api/books/2701/similar
+```
+
+Pour la recherche RegEx, utiliser l'interface de recherche avancée ou la route :
+
+```text
+GET /api/search/advanced?regex=...
+```
+
+Exemples de recherches :
+
+| Recherche | Objectif |
+|---|---|
+| `whale` | Recherche simple |
+| `ship` | Recherche d'un mot présent dans plusieurs livres |
+| `whal(e\|es\|ing)` | Recherche RegEx |
+| `([a-z` | Vérification de la gestion d'une RegEx invalide |
+
+## 8. Tests et performances
+
+### Tests backend
+
+Depuis la racine du projet, avec Python et les dépendances installées :
+
+```powershell
+python -m pytest
+```
+
+### Tests frontend
+
+```powershell
+cd frontend
+npm ci
+npm test
+```
+
+### Mesures de performance
+
+Nous avons également créé le script `benchmark_gutenberg.py` pour comparer les temps de réponse de la recherche simple et de la recherche RegEx.
+
+Les requêtes `whale`, `ship` et `alice` ont été exécutées 10 fois chacune sur l'application en ligne.
+
+Le script calcule les moyennes et les écarts-types et génère un graphique. Les mesures incluent le temps de communication réseau.
+
+Les résultats sont présentés dans notre rapport, avec les fichiers CSV et le graphique.
+
+## 9. Organisation du projet
+
+| Dossier / fichier | Rôle |
+|---|---|
+| `backend/` | API FastAPI, recherche, classement et recommandations |
+| `frontend/` | Interface React/Vite |
+| `data/sample/` | Données d'exemple |
+| `data/raw/` | Textes du corpus, si présents |
+| `data/indexes/` | Index inversé |
+| `data/graphs/` | Graphe et PageRank |
+| `scripts/` | Téléchargement, indexation, graphe, PageRank et import |
+| `tests/` | Tests automatisés |
+| `.github/workflows/` | Workflows GitHub Actions |
+| `docker-compose.yml` | Configuration des services Docker |
+| `docs/` | Documentation complémentaire |
+
+## 10. Dépannage
+
+| Problème | Solution |
+|---|---|
+| Docker ne démarre pas | Vérifier que Docker Desktop est lancé |
+| Port 8080 ou 8000 déjà utilisé | Libérer le port ou adapter la configuration |
+| Backend non prêt | Consulter `docker compose logs --tail=80 backend` |
+| Bandeau « Mode démonstration » | Vérifier les données disponibles et `/api/health` |
+| Aucun livre dans PostgreSQL | Vérifier l'import des métadonnées |
+| Modification des données non visible | Exécuter `docker compose restart backend` |
+| Le site AWS est inaccessible | Vérifier la connexion Internet et la disponibilité du serveur |
+
+## 11. Contenu du rendu
+
+Le rendu comprend :
+
+- Le code source de l'application.
+- Les fichiers Docker et Docker Compose.
+- Les scripts de préparation du corpus et des algorithmes.
+- Les tests et les mesures de performance.
+- Le README et la documentation.
+- Le rapport du projet.
+- La vidéo de présentation et de démonstration.
+
+Le corpus complet pouvant dépasser la taille autorisée pour l'archive, la version déployée sur AWS permet de tester l'application avec les données réelles.
+
+**Application :** http://56.228.24.64/  
+**Code source :** https://github.com/divcamillediv/gutenberg-library
+
+**Projet réalisé par Kenza, Nadine et Camille — Master Informatique, DAAR, Projet 2.**
