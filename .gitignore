@@ -32,3 +32,4 @@ Thumbs.db
 !/data/graphs/.gitkeep
 /data/metadata/*
 !/data/metadata/.gitkeep
+patches/
