@@ -2,9 +2,9 @@ fastapi>=0.115,<1.0
 uvicorn[standard]>=0.30,<1.0
 pydantic>=2.7,<3.0
 
+# PostgreSQL
+psycopg[binary]==3.3.9
+
 # Tests
 pytest>=8.0
 httpx>=0.27
-
-# TODO (Kenza)  : ajouter les dépendances de l'indexation (ex. nltk / snowballstemmer, requests).
-# TODO (Nadine) : ajouter les dépendances du graphe (ex. numpy, networkx) si utilisées.

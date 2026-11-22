@@ -1,4 +1,4 @@
-""""Connexion du backend à PostgreSQL et chargement des métadonnées."""
+"""Connexion du backend à PostgreSQL et chargement des métadonnées."""
 
 import os
 
@@ -8,18 +8,21 @@ from psycopg.rows import dict_row
 
 def get_connection():
     """Ouvre une connexion à PostgreSQL."""
+
     return psycopg.connect(
         host=os.getenv("POSTGRES_HOST", "localhost"),
         port=os.getenv("POSTGRES_PORT", "5432"),
         dbname=os.getenv("POSTGRES_DB", "gutenberg"),
         user=os.getenv("POSTGRES_USER", "gutenberg"),
         password=os.environ["POSTGRES_PASSWORD"],
-        row_factory=dict_row
+        row_factory=dict_row,
+        connect_timeout=10
     )
 
 
 def load_books_from_postgres() -> list[dict]:
     """Charge les métadonnées au format attendu par le backend."""
+
     with get_connection() as connexion:
         with connexion.cursor() as curseur:
             curseur.execute("""
